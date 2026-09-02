@@ -945,6 +945,7 @@ export type Database = {
           status: string
           updated_at: string
           updated_by: string | null
+          version: number
           weight_g: number | null
         }
         Insert: {
@@ -966,6 +967,7 @@ export type Database = {
           status?: string
           updated_at?: string
           updated_by?: string | null
+          version?: number
           weight_g?: number | null
         }
         Update: {
@@ -987,6 +989,7 @@ export type Database = {
           status?: string
           updated_at?: string
           updated_by?: string | null
+          version?: number
           weight_g?: number | null
         }
         Relationships: [
