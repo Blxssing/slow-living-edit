@@ -26,3 +26,19 @@ export function getAnonClient() {
 
   return createClient(url, key)
 }
+
+/**
+ * Client bound to the caller's JWT. RLS + auth.uid() apply, so database
+ * policies and audit/actor triggers see the real user. Use this for all
+ * catalog writes — never the service role, which would erase the actor.
+ */
+export function getUserClient(request: Request) {
+  const url = Deno.env.get('SUPABASE_URL')
+  const key = Deno.env.get('SUPABASE_ANON_KEY')
+  if (!url || !key) throw new Error('Missing Supabase configuration')
+  const authorization = request.headers.get('authorization') ?? ''
+  return createClient(url, key, {
+    global: { headers: { authorization } },
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+}

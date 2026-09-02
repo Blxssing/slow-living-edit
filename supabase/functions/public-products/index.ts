@@ -2,6 +2,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { z } from 'npm:zod@3'
 import { getServiceRoleClient } from '../_shared/supabase.ts'
 import { jsonResponse, errorResponse } from '../_shared/response.ts'
+import { publicImageUrls } from '../_shared/catalog.ts'
 
 const QuerySchema = z.object({
   category_slug: z.string().optional(),
@@ -61,7 +62,8 @@ Deno.serve(async (req) => {
   }
 
   if (search) {
-    query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`)
+    const s = search.replace(/[%,()\\]/g, '').slice(0, 120)
+    query = query.or(`name.ilike.%${s}%,description.ilike.%${s}%,brand.ilike.%${s}%`)
   }
 
   if (featured === 'true') {
@@ -75,7 +77,7 @@ Deno.serve(async (req) => {
     return errorResponse('Failed to fetch products', 500)
   }
 
-  const products = (data || []).map((product: any) => ({
+  const products = await Promise.all((data || []).map(async (product: any) => ({
     id: product.id,
     name: product.name,
     slug: product.slug,
@@ -84,9 +86,16 @@ Deno.serve(async (req) => {
     compare_at_price: product.compare_at_price,
     is_featured: product.is_featured,
     category: product.categories,
-    images: product.product_images || [],
-    variants: product.product_variants || [],
-  }))
+    images: await publicImageUrls(supabase as any, product.product_images || []),
+    variants: (product.product_variants || []).map((v: any) => ({
+      id: v.id,
+      sku: v.sku,
+      option_1: v.option_1,
+      option_2: v.option_2,
+      option_3: v.option_3,
+      price_adjustment: v.price_adjustment,
+    })),
+  })))
 
   return jsonResponse({
     products,
