@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Heart, Menu, Search, ShoppingBag, User, X } from "lucide-react";
+import { Heart, Menu, Search, ShoppingBag, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
@@ -126,13 +126,6 @@ export const Header = () => {
               <Search className="h-[1.15rem] w-[1.15rem]" />
             </button>
             <Link
-              to="/account"
-              aria-label="Account"
-              className="hidden h-10 w-10 place-items-center rounded-full hover:bg-muted md:grid"
-            >
-              <User className="h-[1.15rem] w-[1.15rem]" />
-            </Link>
-            <Link
               to="/wishlist"
               aria-label={`Wishlist, ${wishCount} items`}
               className="relative hidden h-10 w-10 place-items-center rounded-full hover:bg-muted md:grid"
@@ -195,7 +188,7 @@ export const Header = () => {
           </div>
           <nav aria-label="Mobile" className="flex-1 overflow-y-auto px-5 py-6">
             <ul className="space-y-1">
-              {[...staticLinks, ...navCategories.map((c) => ({ label: c.name, to: `/products?category=${c.slug}` })), { label: "About", to: "/about" }, { label: "Wishlist", to: "/wishlist" }, { label: "Account", to: "/account" }].map(
+              {[...staticLinks, ...navCategories.map((c) => ({ label: c.name, to: `/products?category=${c.slug}` })), { label: "About", to: "/about" }, { label: "Wishlist", to: "/wishlist" }].map(
                 (link) => (
                   <li key={link.label}>
                     <Link
