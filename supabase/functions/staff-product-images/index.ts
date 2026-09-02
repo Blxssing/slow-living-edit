@@ -187,11 +187,13 @@ Deno.serve(async (req) => {
         .maybeSingle()
       if (!img) return errorResponse('Image not found', 404)
 
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from('product_images')
         .update({ is_primary: true })
         .eq('id', img.id)
-      if (error) return errorResponse('Failed to set primary image', 403)
+        .select('id')
+        .maybeSingle()
+      if (error || !updated) return errorResponse('Failed to set primary image', 403)
       return jsonResponse({ primary_image_id: img.id, product_id: img.product_id })
     }
 
@@ -211,12 +213,14 @@ Deno.serve(async (req) => {
       }
 
       for (const item of parsed.data.order) {
-        const { error } = await supabase
+        const { data: row, error } = await supabase
           .from('product_images')
           .update({ sort_order: item.sort_order })
           .eq('id', item.image_id)
           .eq('product_id', parsed.data.product_id)
-        if (error) return errorResponse('Failed to reorder images', 403)
+          .select('id')
+          .maybeSingle()
+        if (error || !row) return errorResponse('Failed to reorder images', 403)
       }
       return jsonResponse({ reordered: ids.length })
     }
