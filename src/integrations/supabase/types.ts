@@ -352,11 +352,13 @@ export type Database = {
       }
       offers: {
         Row: {
+          activated_at: string | null
           category_id: string | null
           created_at: string
           created_by: string | null
           end_at: string | null
           id: string
+          internal_notes: string | null
           name: string
           offer_type: string
           priority: number
@@ -368,13 +370,16 @@ export type Database = {
           updated_at: string
           updated_by: string | null
           value: number
+          version: number
         }
         Insert: {
+          activated_at?: string | null
           category_id?: string | null
           created_at?: string
           created_by?: string | null
           end_at?: string | null
           id?: string
+          internal_notes?: string | null
           name: string
           offer_type: string
           priority?: number
@@ -386,13 +391,16 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           value?: number
+          version?: number
         }
         Update: {
+          activated_at?: string | null
           category_id?: string | null
           created_at?: string
           created_by?: string | null
           end_at?: string | null
           id?: string
+          internal_notes?: string | null
           name?: string
           offer_type?: string
           priority?: number
@@ -404,6 +412,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           value?: number
+          version?: number
         }
         Relationships: [
           {
@@ -1247,6 +1256,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      calculate_discount: {
+        Args: { _base_price: number; _offer_type: string; _value: number }
+        Returns: {
+          discount_amount: number
+          final_price: number
+        }[]
+      }
       commit_inventory: {
         Args: {
           _actor_id?: string
@@ -1260,6 +1276,22 @@ export type Database = {
         Args: { _variant_id: string }
         Returns: number
       }
+      get_product_pricing: {
+        Args: { _product_id: string }
+        Returns: {
+          base_price: number
+          discount_amount: number
+          end_at: string
+          final_price: number
+          labels: string[]
+          offer_id: string
+          offer_type: string
+          offer_value: number
+          product_id: string
+          promotional_label: string
+          start_at: string
+        }[]
+      }
       has_permission: {
         Args: { _permission_key: string; _user_id: string }
         Returns: boolean
@@ -1272,6 +1304,7 @@ export type Database = {
         Returns: boolean
       }
       is_active_account: { Args: { _user_id: string }; Returns: boolean }
+      money_round: { Args: { _amount: number }; Returns: number }
       my_access: {
         Args: never
         Returns: {
@@ -1279,6 +1312,10 @@ export type Database = {
           permission_key: string
           role: string
         }[]
+      }
+      offer_is_live: {
+        Args: { _end_at: string; _start_at: string; _status: string }
+        Returns: boolean
       }
       release_inventory: {
         Args: {
@@ -1297,6 +1334,13 @@ export type Database = {
           _variant_id: string
         }
         Returns: boolean
+      }
+      sync_offer_statuses: {
+        Args: never
+        Returns: {
+          activated: number
+          expired: number
+        }[]
       }
     }
     Enums: {
