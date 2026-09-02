@@ -28,12 +28,16 @@ export interface Promotion {
   ends_at: string | null;
 }
 
+export type CategoryTheme = "default" | "gold-pink" | "diamond-cream" | "silver-orange";
+
 export interface Category {
   id: string;
   name: string;
   slug: string;
   description?: string | null;
   image_url?: string | null;
+  tagline?: string | null;
+  theme?: CategoryTheme | null;
   product_count?: number;
 }
 
