@@ -74,7 +74,10 @@ Deno.serve(async (req) => {
   const { error: profileError } = await supabase.from('profiles').insert({
     id: userId,
     full_name,
+    email,
     phone: phone || null,
+    is_staff: true,
+    status: 'ACTIVE',
   })
 
   if (profileError) {
