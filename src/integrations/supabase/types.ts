@@ -263,30 +263,45 @@ export type Database = {
       }
       inventory: {
         Row: {
+          created_at: string
+          damaged: number
           id: string
+          lost: number
           low_stock_threshold: number
           quantity: number
           reserved: number
+          returned: number
           sold: number
           updated_at: string
+          updated_by: string | null
           variant_id: string
         }
         Insert: {
+          created_at?: string
+          damaged?: number
           id?: string
+          lost?: number
           low_stock_threshold?: number
           quantity?: number
           reserved?: number
+          returned?: number
           sold?: number
           updated_at?: string
+          updated_by?: string | null
           variant_id: string
         }
         Update: {
+          created_at?: string
+          damaged?: number
           id?: string
+          lost?: number
           low_stock_threshold?: number
           quantity?: number
           reserved?: number
+          returned?: number
           sold?: number
           updated_at?: string
+          updated_by?: string | null
           variant_id?: string
         }
         Relationships: [
@@ -304,11 +319,19 @@ export type Database = {
           actor_id: string | null
           created_at: string
           id: string
+          idempotency_key: string | null
+          inventory_id: string | null
           movement_type: string
+          notes: string | null
           order_id: string | null
+          product_id: string | null
           quantity_after: number
+          quantity_before: number | null
           quantity_delta: number
           reason: string | null
+          reference_id: string | null
+          reference_type: string | null
+          reservation_id: string | null
           reserved_after: number
           sold_after: number
           variant_id: string
@@ -317,11 +340,19 @@ export type Database = {
           actor_id?: string | null
           created_at?: string
           id?: string
+          idempotency_key?: string | null
+          inventory_id?: string | null
           movement_type: string
+          notes?: string | null
           order_id?: string | null
+          product_id?: string | null
           quantity_after: number
+          quantity_before?: number | null
           quantity_delta: number
           reason?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          reservation_id?: string | null
           reserved_after: number
           sold_after: number
           variant_id: string
@@ -330,16 +361,31 @@ export type Database = {
           actor_id?: string | null
           created_at?: string
           id?: string
+          idempotency_key?: string | null
+          inventory_id?: string | null
           movement_type?: string
+          notes?: string | null
           order_id?: string | null
+          product_id?: string | null
           quantity_after?: number
+          quantity_before?: number | null
           quantity_delta?: number
           reason?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          reservation_id?: string | null
           reserved_after?: number
           sold_after?: number
           variant_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_movements_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inventory_movements_order_id_fkey"
             columns: ["order_id"]
@@ -348,7 +394,87 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "inventory_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "inventory_movements_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_reservations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          idempotency_key: string | null
+          inventory_id: string
+          product_id: string | null
+          quantity: number
+          reference_id: string | null
+          reference_type: string
+          released_at: string | null
+          status: string
+          updated_at: string
+          variant_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          inventory_id: string
+          product_id?: string | null
+          quantity: number
+          reference_id?: string | null
+          reference_type?: string
+          released_at?: string | null
+          status?: string
+          updated_at?: string
+          variant_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          inventory_id?: string
+          product_id?: string | null
+          quantity?: number
+          reference_id?: string | null
+          reference_type?: string
+          released_at?: string | null
+          status?: string
+          updated_at?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_reservations_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_reservations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_reservations_variant_id_fkey"
             columns: ["variant_id"]
             isOneToOne: false
             referencedRelation: "product_variants"
@@ -1262,6 +1388,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      apply_inventory_movement: {
+        Args: {
+          _actor_id?: string
+          _idempotency_key?: string
+          _movement_type: string
+          _notes?: string
+          _quantity: number
+          _reason?: string
+          _reference_id?: string
+          _reference_type?: string
+          _reservation_id?: string
+          _variant_id: string
+        }
+        Returns: Json
+      }
       calculate_discount: {
         Args: { _base_price: number; _offer_type: string; _value: number }
         Returns: {
@@ -1278,6 +1419,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      commit_reservation: {
+        Args: {
+          _actor_id?: string
+          _idempotency_key?: string
+          _reservation_id: string
+        }
+        Returns: Json
+      }
+      expire_stale_reservations: { Args: { _limit?: number }; Returns: number }
       get_available_inventory: {
         Args: { _variant_id: string }
         Returns: number
@@ -1309,6 +1459,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      inventory_status: {
+        Args: { _available: number; _threshold: number }
+        Returns: string
+      }
       is_active_account: { Args: { _user_id: string }; Returns: boolean }
       money_round: { Args: { _amount: number }; Returns: number }
       my_access: {
@@ -1332,6 +1486,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      release_reservation: {
+        Args: {
+          _actor_id?: string
+          _final_status?: string
+          _reason?: string
+          _reservation_id: string
+        }
+        Returns: Json
+      }
       reserve_inventory: {
         Args: {
           _actor_id?: string
@@ -1340,6 +1503,18 @@ export type Database = {
           _variant_id: string
         }
         Returns: boolean
+      }
+      reserve_stock: {
+        Args: {
+          _actor_id?: string
+          _idempotency_key?: string
+          _quantity: number
+          _reference_id?: string
+          _reference_type?: string
+          _ttl_minutes?: number
+          _variant_id: string
+        }
+        Returns: Json
       }
       sync_offer_statuses: {
         Args: never
