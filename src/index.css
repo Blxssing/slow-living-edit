@@ -274,3 +274,87 @@
   }
   .reveal { opacity: 1; transform: none; }
 }
+
+/* ── Category themes ───────────────────────────────────────────────
+   Applied by data (categories.theme), never hardcoded per page.
+   Each scope re-maps the semantic tokens so every child component
+   inherits the collection's dominant palette. */
+
+.theme-gold-pink {
+  --background: 40 46% 97%;
+  --foreground: 32 40% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 32 40% 10%;
+  --primary: 40 62% 44%;
+  --primary-foreground: 40 60% 97%;
+  --secondary: 336 78% 93%;
+  --secondary-foreground: 32 45% 16%;
+  --muted: 40 32% 93%;
+  --muted-foreground: 34 16% 38%;
+  --accent: 334 82% 60%;
+  --accent-foreground: 40 60% 97%;
+  --border: 40 32% 86%;
+  --input: 40 32% 86%;
+  --ring: 40 62% 44%;
+  --gradient-theme: linear-gradient(135deg, hsl(40 68% 52%), hsl(334 82% 62%));
+  --gradient-theme-soft: linear-gradient(160deg, hsl(40 60% 92%), hsl(336 78% 95%));
+  --shadow-theme: 0 22px 60px -26px hsl(40 62% 34% / 0.55);
+}
+
+.theme-diamond-cream {
+  --background: 40 44% 96%;
+  --foreground: 208 34% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 208 34% 12%;
+  --primary: 202 46% 34%;
+  --primary-foreground: 40 50% 97%;
+  --secondary: 42 52% 90%;
+  --secondary-foreground: 208 34% 16%;
+  --muted: 42 34% 92%;
+  --muted-foreground: 208 12% 40%;
+  --accent: 196 62% 60%;
+  --accent-foreground: 208 40% 12%;
+  --border: 42 28% 85%;
+  --input: 42 28% 85%;
+  --ring: 196 62% 55%;
+  --gradient-theme: linear-gradient(135deg, hsl(196 62% 66%), hsl(42 56% 88%));
+  --gradient-theme-soft: linear-gradient(160deg, hsl(42 56% 93%), hsl(196 46% 95%));
+  --shadow-theme: 0 22px 60px -26px hsl(202 46% 28% / 0.45);
+}
+
+.theme-silver-orange {
+  --background: 220 14% 97%;
+  --foreground: 222 22% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 22% 12%;
+  --primary: 24 92% 48%;
+  --primary-foreground: 30 60% 98%;
+  --secondary: 220 14% 91%;
+  --secondary-foreground: 222 22% 16%;
+  --muted: 220 14% 93%;
+  --muted-foreground: 220 8% 40%;
+  --accent: 30 96% 56%;
+  --accent-foreground: 222 22% 12%;
+  --border: 220 12% 86%;
+  --input: 220 12% 86%;
+  --ring: 24 92% 48%;
+  --gradient-theme: linear-gradient(135deg, hsl(220 10% 62%), hsl(24 92% 54%));
+  --gradient-theme-soft: linear-gradient(160deg, hsl(220 16% 93%), hsl(28 80% 95%));
+  --shadow-theme: 0 22px 60px -26px hsl(220 20% 30% / 0.45);
+}
+
+.theme-default {
+  --gradient-theme: var(--gradient-cherry);
+  --gradient-theme-soft: var(--gradient-blush);
+  --shadow-theme: var(--shadow-glow);
+}
+
+.gradient-theme { background-image: var(--gradient-theme); }
+.gradient-theme-soft { background-image: var(--gradient-theme-soft); }
+.shadow-theme { box-shadow: var(--shadow-theme); }
+.text-gradient-theme {
+  background-image: var(--gradient-theme);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

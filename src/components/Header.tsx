@@ -102,7 +102,7 @@ export const Header = () => {
             {navCategories.map((cat) => (
               <Link
                 key={cat.id}
-                to={`/products?category=${cat.slug}`}
+                to={`/collection/${cat.slug}`}
                 className="link-underline text-sm font-semibold text-foreground/80 transition-colors hover:text-foreground"
               >
                 {cat.name}
@@ -188,7 +188,7 @@ export const Header = () => {
           </div>
           <nav aria-label="Mobile" className="flex-1 overflow-y-auto px-5 py-6">
             <ul className="space-y-1">
-              {[...staticLinks, ...navCategories.map((c) => ({ label: c.name, to: `/products?category=${c.slug}` })), { label: "About", to: "/about" }, { label: "Wishlist", to: "/wishlist" }].map(
+              {[...staticLinks, ...navCategories.map((c) => ({ label: c.name, to: `/collection/${c.slug}` })), { label: "About", to: "/about" }, { label: "Wishlist", to: "/wishlist" }].map(
                 (link) => (
                   <li key={link.label}>
                     <Link

@@ -28,12 +28,16 @@ export interface Promotion {
   ends_at: string | null;
 }
 
+export type CategoryTheme = "default" | "gold-pink" | "diamond-cream" | "silver-orange";
+
 export interface Category {
   id: string;
   name: string;
   slug: string;
   description?: string | null;
   image_url?: string | null;
+  tagline?: string | null;
+  theme?: CategoryTheme | null;
   product_count?: number;
 }
 
@@ -98,7 +102,7 @@ export function fetchProduct(slug: string) {
 export async function fetchCategories(): Promise<Category[]> {
   const { data, error } = await supabase
     .from("categories")
-    .select("id, name, slug, description, image_url, sort_order")
+    .select("id, name, slug, description, image_url, tagline, theme, sort_order")
     .eq("status", "ACTIVE")
     .eq("is_active", true)
     .order("sort_order", { ascending: true });

@@ -82,7 +82,7 @@ const Index = () => {
             {categories!.slice(0, 8).map((cat) => (
               <Link
                 key={cat.id}
-                to={`/products?category=${cat.slug}`}
+                to={`/collection/${cat.slug}`}
                 className="image-zoom group relative flex aspect-[5/4] items-end overflow-hidden rounded-[1.25rem] bg-muted p-5"
               >
                 {cat.image_url && (

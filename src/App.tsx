@@ -16,6 +16,9 @@ import Checkout from "./pages/Checkout";
 import ResetPassword from "./pages/ResetPassword";
 import StaffLogin from "./pages/staff/StaffLogin";
 import StaffDashboard from "./pages/staff/StaffDashboard";
+import StaffOrders from "./pages/staff/StaffOrders";
+import StaffOrderDetail from "./pages/staff/StaffOrderDetail";
+import StaffCategories from "./pages/staff/StaffCategories";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +46,30 @@ const App = () => (
               element={
                 <RequireStaff>
                   <StaffDashboard />
+                </RequireStaff>
+              }
+            />
+            <Route
+              path="/staff/orders"
+              element={
+                <RequireStaff>
+                  <StaffOrders />
+                </RequireStaff>
+              }
+            />
+            <Route
+              path="/staff/orders/:id"
+              element={
+                <RequireStaff>
+                  <StaffOrderDetail />
+                </RequireStaff>
+              }
+            />
+            <Route
+              path="/staff/categories"
+              element={
+                <RequireStaff>
+                  <StaffCategories />
                 </RequireStaff>
               }
             />

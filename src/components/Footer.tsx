@@ -52,7 +52,7 @@ export const Footer = () => {
             </li>
             {(categories ?? []).slice(0, 5).map((cat) => (
               <li key={cat.id}>
-                <Link to={`/products?category=${cat.slug}`} className="hover:text-background">
+                <Link to={`/collection/${cat.slug}`} className="hover:text-background">
                   {cat.name}
                 </Link>
               </li>
