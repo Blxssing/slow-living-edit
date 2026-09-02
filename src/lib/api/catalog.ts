@@ -102,7 +102,7 @@ export function fetchProduct(slug: string) {
 export async function fetchCategories(): Promise<Category[]> {
   const { data, error } = await supabase
     .from("categories")
-    .select("id, name, slug, description, image_url, sort_order")
+    .select("id, name, slug, description, image_url, tagline, theme, sort_order")
     .eq("status", "ACTIVE")
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
