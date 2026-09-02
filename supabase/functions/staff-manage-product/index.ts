@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
       ? await requirePermission(req, 'PRODUCT_CREATE')
       : await requirePermission(req, 'PRODUCT_UPDATE')
   if (!user) {
-    return errorResponse('Unauthorized', 401)
+    return errorResponse('Authentication required or insufficient permissions', 403)
   }
 
   const supabase = getServiceRoleClient()

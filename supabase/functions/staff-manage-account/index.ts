@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, full_name, email, phone, status, last_login_at, created_at, user_roles(role)')
+      .select('id, full_name, email, phone, status, last_login_at, created_at')
       .eq('is_staff', true)
       .order('created_at', { ascending: false })
 
@@ -64,7 +64,18 @@ Deno.serve(async (req) => {
       console.error('staff list failed')
       return errorResponse('Unable to load staff', 500)
     }
-    return jsonResponse({ staff: data })
+
+    const ids = (data ?? []).map((p) => p.id)
+    const { data: roleRows } = await supabase
+      .from('user_roles')
+      .select('user_id, role')
+      .in('user_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000'])
+
+    const staff = (data ?? []).map((p) => ({
+      ...p,
+      roles: (roleRows ?? []).filter((r) => r.user_id === p.id).map((r) => r.role),
+    }))
+    return jsonResponse({ staff })
   }
 
   if (req.method !== 'POST') return errorResponse('Method not allowed', 405)
