@@ -1,393 +1,344 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Loader2, Lock, Smartphone } from "lucide-react";
+import { toast } from "sonner";
 import { Layout } from "@/components/Layout";
-import { useCart } from "@/hooks/useCart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { DELIVERY_FEE, deliveryFeeFor, useCart } from "@/hooks/useCart";
+import { formatKES } from "@/lib/api/catalog";
+
+const normalisePhone = (input: string) => {
+  const digits = input.replace(/\D/g, "");
+  if (digits.startsWith("254")) return digits;
+  if (digits.startsWith("0")) return `254${digits.slice(1)}`;
+  if (digits.length === 9) return `254${digits}`;
+  return digits;
+};
+
+type Stage = "form" | "pending" | "done";
 
 const Checkout = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { items, getSubtotal, clearCart } = useCart();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
+  const { user, loading: authLoading } = useAuth();
+  const { items, clearCart } = useCart();
+  const subtotal = useCart((s) => s.getSubtotal());
+  const delivery = deliveryFeeFor(subtotal);
+  const total = subtotal + delivery;
+
+  const [stage, setStage] = useState<Stage>("form");
+  const [submitting, setSubmitting] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
+
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const [credentials, setCredentials] = useState({ email: "", password: "" });
+  const [authBusy, setAuthBusy] = useState(false);
+
+  const [form, setForm] = useState({
+    full_name: "",
     phone: "",
-    address: "",
+    address_line_1: "",
+    address_line_2: "",
     city: "",
-    postalCode: "",
-    country: "",
     notes: "",
   });
 
-  const subtotal = getSubtotal();
-  const shipping = subtotal > 500 ? 0 : 25;
-  const total = subtotal + shipping;
+  useEffect(() => {
+    document.title = "Checkout | Mia Bella Beauty";
+  }, []);
 
-  if (items.length === 0) {
+  const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthBusy(true);
+    try {
+      if (authMode === "signup") {
+        const { error } = await supabase.auth.signUp({
+          email: credentials.email,
+          password: credentials.password,
+          options: { emailRedirectTo: `${window.location.origin}/checkout` },
+        });
+        if (error) throw error;
+        toast.success("Account created. You can continue with your order.");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword(credentials);
+        if (error) throw error;
+        toast.success("Welcome back!");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Authentication failed");
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const phone = normalisePhone(form.phone);
+    if (!/^254[0-9]{9}$/.test(phone)) {
+      toast.error("Enter a valid Kenyan mobile number, e.g. 0712 345 678");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { data: orderData, error: orderError } = await supabase.functions.invoke(
+        "create-order",
+        {
+          body: {
+            items: items.map((i) => ({ variant_id: i.variantId, quantity: i.quantity })),
+            shipping_address: {
+              full_name: form.full_name,
+              phone,
+              address_line_1: form.address_line_1,
+              address_line_2: form.address_line_2 || undefined,
+              city: form.city,
+              country: "Kenya",
+            },
+            notes: form.notes || undefined,
+          },
+        },
+      );
+      if (orderError) throw orderError;
+
+      const newOrderId = (orderData as { order?: { id: string } })?.order?.id;
+      if (!newOrderId) throw new Error("Order could not be created");
+      setOrderId(newOrderId);
+
+      const { error: payError } = await supabase.functions.invoke("mpesa-initiate", {
+        body: { order_id: newOrderId, phone_number: phone },
+      });
+      if (payError) throw payError;
+
+      clearCart();
+      setStage("pending");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "We couldn’t place your order. Please try again.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (stage === "pending") {
     return (
       <Layout>
         <div className="container-narrow py-28 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <h1 className="font-serif text-4xl mb-4">No Items to Checkout</h1>
-            <p className="text-muted-foreground mb-8">
-              Your bag is empty. Add some items before checking out.
-            </p>
-            <Button
-              asChild
-              size="lg"
-              className="rounded-none px-10 py-6 text-sm tracking-[0.15em] uppercase btn-premium"
-            >
-              <Link to="/products">
-                Start Shopping
-                <ArrowRight className="ml-3 w-4 h-4" />
-              </Link>
+          <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-secondary">
+            <Smartphone className="h-8 w-8 text-primary" />
+          </div>
+          <h1 className="mt-6 font-serif text-4xl">Check your phone</h1>
+          <p className="mt-3 text-muted-foreground">
+            We sent an M-Pesa payment request to {normalisePhone(form.phone)}. Enter your PIN to
+            complete the order.
+          </p>
+          {orderId && (
+            <p className="mt-2 text-xs text-muted-foreground">Order reference: {orderId.slice(0, 8)}</p>
+          )}
+          <div className="mt-8 flex justify-center gap-3">
+            <Button asChild variant="outline" className="rounded-full">
+              <Link to="/products">Keep shopping</Link>
             </Button>
-          </motion.div>
+            <Button className="rounded-full" onClick={() => navigate("/")}>
+              Done
+            </Button>
+          </div>
         </div>
       </Layout>
     );
   }
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    // Simulate form submission
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    toast({
-      title: "Order Request Submitted",
-      description:
-        "Thank you! We'll contact you shortly to complete your order.",
-    });
-
-    clearCart();
-    setIsSubmitting(false);
-    navigate("/");
-  };
+  if (items.length === 0) {
+    return (
+      <Layout>
+        <div className="container-narrow py-28 text-center">
+          <h1 className="font-serif text-4xl">Nothing to check out</h1>
+          <p className="mt-3 text-muted-foreground">Your bag is empty.</p>
+          <Button asChild className="mt-8 rounded-full">
+            <Link to="/products">Start shopping</Link>
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
-      {/* Breadcrumb */}
-      <div className="container-full py-6 border-b border-border">
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <Link to="/cart" className="hover:text-foreground transition-colors">
-            Your Bag
-          </Link>
-          <span className="text-border">/</span>
-          <span className="text-foreground">Checkout</span>
-        </div>
-      </div>
-
-      {/* Coming Soon Banner */}
-      <div className="bg-primary/5 border-b border-primary/10">
-        <div className="container-full py-4">
-          <div className="flex items-center gap-3 text-sm">
-            <AlertCircle className="w-5 h-5 text-primary" />
-            <p>
-              <span className="font-medium">Online checkout coming soon.</span>{" "}
-              <span className="text-muted-foreground">
-                Please submit your order request below and we'll contact you to
-                complete your purchase.
-              </span>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <section className="py-10 md:py-16">
-        <div className="container-full">
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="font-serif text-4xl md:text-5xl mb-12"
-          >
-            Checkout
-          </motion.h1>
-
-          <div className="grid lg:grid-cols-12 gap-12 lg:gap-16">
-            {/* Form */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="lg:col-span-7"
-            >
-              <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Contact Information */}
-                <div>
-                  <h2 className="font-serif text-xl mb-6">
-                    Contact Information
-                  </h2>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div>
-                      <label
-                        htmlFor="firstName"
-                        className="block text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground mb-2"
-                      >
-                        First Name *
-                      </label>
-                      <Input
-                        id="firstName"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleInputChange}
-                        required
-                        className="rounded-none h-12"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="lastName"
-                        className="block text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground mb-2"
-                      >
-                        Last Name *
-                      </label>
-                      <Input
-                        id="lastName"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleInputChange}
-                        required
-                        className="rounded-none h-12"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid sm:grid-cols-2 gap-4 mt-4">
-                    <div>
-                      <label
-                        htmlFor="email"
-                        className="block text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground mb-2"
-                      >
-                        Email *
-                      </label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        required
-                        className="rounded-none h-12"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="phone"
-                        className="block text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground mb-2"
-                      >
-                        Phone
-                      </label>
-                      <Input
-                        id="phone"
-                        name="phone"
-                        type="tel"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        className="rounded-none h-12"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Shipping Address */}
-                <div>
-                  <h2 className="font-serif text-xl mb-6">Shipping Address</h2>
-                  <div className="space-y-4">
-                    <div>
-                      <label
-                        htmlFor="address"
-                        className="block text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground mb-2"
-                      >
-                        Street Address *
-                      </label>
-                      <Input
-                        id="address"
-                        name="address"
-                        value={formData.address}
-                        onChange={handleInputChange}
-                        required
-                        className="rounded-none h-12"
-                      />
-                    </div>
-                    <div className="grid sm:grid-cols-3 gap-4">
-                      <div className="sm:col-span-1">
-                        <label
-                          htmlFor="city"
-                          className="block text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground mb-2"
-                        >
-                          City *
-                        </label>
-                        <Input
-                          id="city"
-                          name="city"
-                          value={formData.city}
-                          onChange={handleInputChange}
-                          required
-                          className="rounded-none h-12"
-                        />
-                      </div>
-                      <div>
-                        <label
-                          htmlFor="postalCode"
-                          className="block text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground mb-2"
-                        >
-                          Postal Code *
-                        </label>
-                        <Input
-                          id="postalCode"
-                          name="postalCode"
-                          value={formData.postalCode}
-                          onChange={handleInputChange}
-                          required
-                          className="rounded-none h-12"
-                        />
-                      </div>
-                      <div>
-                        <label
-                          htmlFor="country"
-                          className="block text-xs font-semibold tracking-[0.1em] uppercase text-muted-foreground mb-2"
-                        >
-                          Country *
-                        </label>
-                        <Input
-                          id="country"
-                          name="country"
-                          value={formData.country}
-                          onChange={handleInputChange}
-                          required
-                          className="rounded-none h-12"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Order Notes */}
-                <div>
-                  <h2 className="font-serif text-xl mb-6">Order Notes</h2>
-                  <Textarea
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleInputChange}
-                    placeholder="Any special requests or notes for your order..."
-                    className="rounded-none min-h-[120px]"
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  size="lg"
-                  disabled={isSubmitting}
-                  className="w-full rounded-none py-6 text-sm tracking-[0.15em] uppercase btn-premium"
-                >
-                  {isSubmitting ? (
-                    "Submitting..."
-                  ) : (
-                    <>
-                      Submit Order Request
-                      <ArrowRight className="ml-3 w-4 h-4" />
-                    </>
-                  )}
-                </Button>
-              </form>
-            </motion.div>
-
-            {/* Order Summary */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="lg:col-span-5"
-            >
-              <div className="bg-linen p-8 lg:sticky lg:top-28">
-                <h2 className="font-serif text-2xl mb-6">Order Summary</h2>
-
-                {/* Items */}
-                <div className="space-y-4 mb-6">
-                  {items.map((item) => (
-                    <div key={item.product.id} className="flex gap-4">
-                      <div className="w-16 h-20 bg-muted/30 overflow-hidden">
-                        <img
-                          src={item.product.images[0]}
-                          alt={item.product.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium line-clamp-1">
-                          {item.product.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Qty: {item.quantity}
-                        </p>
-                        <p className="text-sm mt-1">
-                          ${(item.product.price * item.quantity).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="border-t border-border pt-4 space-y-3 mb-6">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>${subtotal.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Shipping</span>
-                    <span>
-                      {shipping === 0 ? "Complimentary" : `$${shipping}`}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="border-t border-border pt-4">
-                  <div className="flex justify-between font-serif text-xl">
-                    <span>Total</span>
-                    <span>${total.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                {/* Contact Info */}
-                <div className="mt-8 pt-6 border-t border-border">
-                  <p className="text-[11px] font-semibold tracking-[0.15em] uppercase text-muted-foreground/60 mb-3">
-                    Questions?
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Email us at{" "}
-                    <a
-                      href="mailto:hello@maison.com"
-                      className="text-foreground underline"
-                    >
-                      hello@maison.com
-                    </a>
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          </div>
+      <section className="border-b border-border bg-secondary">
+        <div className="container-wide py-12">
+          <h1 className="font-serif text-4xl md:text-5xl">Checkout</h1>
+          <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+            <Lock className="h-4 w-4" /> Secure M-Pesa payment
+          </p>
         </div>
       </section>
+
+      <div className="container-wide grid gap-12 py-12 lg:grid-cols-12">
+        <div className="lg:col-span-7">
+          {!user && !authLoading ? (
+            <form onSubmit={handleAuth} className="max-w-md space-y-4">
+              <h2 className="font-serif text-2xl">
+                {authMode === "signin" ? "Sign in to continue" : "Create your account"}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                We keep your orders and delivery details in one place.
+              </p>
+              <div>
+                <label htmlFor="email" className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  Email
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  required
+                  value={credentials.email}
+                  onChange={(e) => setCredentials((c) => ({ ...c, email: e.target.value }))}
+                  className="h-12 rounded-xl"
+                />
+              </div>
+              <div>
+                <label htmlFor="password" className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  Password
+                </label>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  minLength={8}
+                  value={credentials.password}
+                  onChange={(e) => setCredentials((c) => ({ ...c, password: e.target.value }))}
+                  className="h-12 rounded-xl"
+                />
+              </div>
+              <Button type="submit" size="lg" className="w-full rounded-full" disabled={authBusy}>
+                {authBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {authMode === "signin" ? "Sign in" : "Create account"}
+              </Button>
+              <button
+                type="button"
+                className="text-sm text-muted-foreground underline"
+                onClick={() => setAuthMode(authMode === "signin" ? "signup" : "signin")}
+              >
+                {authMode === "signin"
+                  ? "New here? Create an account"
+                  : "Already have an account? Sign in"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <div>
+                <h2 className="font-serif text-2xl">Delivery details</h2>
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <label htmlFor="full_name" className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Full name *
+                    </label>
+                    <Input id="full_name" name="full_name" required value={form.full_name} onChange={onChange} className="h-12 rounded-xl" />
+                  </div>
+                  <div>
+                    <label htmlFor="phone" className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      M-Pesa phone *
+                    </label>
+                    <Input id="phone" name="phone" required placeholder="0712 345 678" value={form.phone} onChange={onChange} className="h-12 rounded-xl" />
+                  </div>
+                  <div>
+                    <label htmlFor="city" className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      City / town *
+                    </label>
+                    <Input id="city" name="city" required value={form.city} onChange={onChange} className="h-12 rounded-xl" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label htmlFor="address_line_1" className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Address *
+                    </label>
+                    <Input id="address_line_1" name="address_line_1" required value={form.address_line_1} onChange={onChange} className="h-12 rounded-xl" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label htmlFor="address_line_2" className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Apartment, building (optional)
+                    </label>
+                    <Input id="address_line_2" name="address_line_2" value={form.address_line_2} onChange={onChange} className="h-12 rounded-xl" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label htmlFor="notes" className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Delivery notes (optional)
+                    </label>
+                    <Textarea id="notes" name="notes" rows={3} value={form.notes} onChange={onChange} className="rounded-xl" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-border p-5">
+                <p className="flex items-center gap-2 font-semibold">
+                  <Smartphone className="h-4 w-4 text-primary" /> Pay with M-Pesa
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  You’ll get an STK push on the number above. Approve it with your PIN to confirm the
+                  order.
+                </p>
+              </div>
+
+              <Button type="submit" size="lg" className="w-full rounded-full" disabled={submitting}>
+                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Pay {formatKES(total)}
+              </Button>
+            </form>
+          )}
+        </div>
+
+        <aside className="lg:col-span-5">
+          <div className="rounded-[1.5rem] border border-border p-6">
+            <h2 className="font-serif text-2xl">Order summary</h2>
+            <ul className="mt-5 space-y-4">
+              {items.map((item) => (
+                <li key={item.variantId} className="flex gap-4">
+                  <div className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
+                    {item.image && (
+                      <img src={item.image} alt={item.name} loading="lazy" className="h-full w-full object-cover" />
+                    )}
+                  </div>
+                  <div className="flex flex-1 justify-between gap-3">
+                    <div>
+                      <p className="font-serif">{item.name}</p>
+                      <p className="text-sm text-muted-foreground">Qty {item.quantity}</p>
+                    </div>
+                    <p className="text-sm font-semibold">
+                      {formatKES(item.unitPrice * item.quantity)}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <dl className="mt-6 space-y-3 border-t border-border pt-5 text-sm">
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Subtotal</dt>
+                <dd className="font-semibold">{formatKES(subtotal)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Delivery</dt>
+                <dd className="font-semibold">{delivery === 0 ? "Free" : formatKES(DELIVERY_FEE)}</dd>
+              </div>
+              <div className="flex justify-between border-t border-border pt-3 text-base">
+                <dt className="font-semibold">Total</dt>
+                <dd className="font-semibold text-primary">{formatKES(total)}</dd>
+              </div>
+            </dl>
+
+            <p className="mt-5 flex items-center gap-2 text-xs text-muted-foreground">
+              <CheckCircle2 className="h-4 w-4 text-primary" /> Stock is reserved once you pay
+            </p>
+          </div>
+        </aside>
+      </div>
     </Layout>
   );
 };
