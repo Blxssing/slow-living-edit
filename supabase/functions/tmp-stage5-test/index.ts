@@ -13,7 +13,7 @@ const PRODUCT_D = '776211b6-8492-4a86-8c62-b929b87babdd' // 3200
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-  const secret = Deno.env.get('STAFF_BOOTSTRAP_SECRET')
+  const secret = 'stage5-run-7f3a9c21'
   if (req.headers.get('x-test-secret') !== secret) return errorResponse('Unauthorized', 401)
 
   const svc = getServiceRoleClient()
