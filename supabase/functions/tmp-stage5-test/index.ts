@@ -39,19 +39,21 @@ Deno.serve(async (req) => {
   try {
     /* ---- provision users ---- */
     for (const [key, role] of [['ceo', 'CEO'], ['hr', 'HR'], ['sales', 'SALES'], ['customer', null]] as const) {
-      const email = `stage5-${key}-${crypto.randomUUID().slice(0, 8)}@miabella.test`
-      const password = crypto.randomUUID() + 'Aa1!'
-      let data: any = null, error: any = null
-      for (let attempt = 0; attempt < 4; attempt++) {
+      const email = `stage5-${key}@miabella.test`
+      const password = 'Stage5Fixture!aA1'
+      const { data: existingList } = await svc.auth.admin.listUsers({ page: 1, perPage: 200 })
+      const existingUser = existingList?.users?.find((u: any) => u.email === email)
+      let userId: string
+      if (existingUser) {
+        userId = existingUser.id
+      } else {
         const r = await svc.auth.admin.createUser({ email, password, email_confirm: true })
-        data = r.data; error = r.error
-        if (!error && r.data.user) break
-        await new Promise((res) => setTimeout(res, 50_000))
+        if (r.error || !r.data.user) throw new Error(`user create failed: ${JSON.stringify(r.error)}`)
+        userId = r.data.user.id
       }
-      if (error || !data?.user) throw new Error(`user create failed: ${JSON.stringify(error)}`)
-      created.push(data.user.id)
+      const data = { user: { id: userId } }
       await svc.from('profiles').upsert({ id: data.user.id, email, status: 'ACTIVE', is_staff: Boolean(role), full_name: `Stage5 ${key}` })
-      if (role) await svc.from('user_roles').insert({ user_id: data.user.id, role })
+      if (role) { const { data: has } = await svc.from('user_roles').select('id').eq('user_id', data.user.id).maybeSingle(); if (!has) await svc.from('user_roles').insert({ user_id: data.user.id, role }) }
       const anon = createClient(URL_, ANON)
       let session: any = null, sErr: any = null
       for (let attempt = 0; attempt < 4; attempt++) {
@@ -273,9 +275,6 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: String(e), results }, 500)
   } finally {
     if (offerIds.length) await svc.from('offers').delete().in('id', offerIds)
-    for (const id of created) {
-      await svc.from('user_roles').delete().eq('user_id', id)
-      await svc.auth.admin.deleteUser(id)
-    }
+    void created
   }
 })
