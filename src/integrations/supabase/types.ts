@@ -945,6 +945,7 @@ export type Database = {
           status: string
           updated_at: string
           updated_by: string | null
+          version: number
           weight_g: number | null
         }
         Insert: {
@@ -966,6 +967,7 @@ export type Database = {
           status?: string
           updated_at?: string
           updated_by?: string | null
+          version?: number
           weight_g?: number | null
         }
         Update: {
@@ -987,6 +989,7 @@ export type Database = {
           status?: string
           updated_at?: string
           updated_by?: string | null
+          version?: number
           weight_g?: number | null
         }
         Relationships: [
@@ -1295,6 +1298,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       app_role: "CEO" | "HR" | "SALES PEOPLE" | "SALES"
