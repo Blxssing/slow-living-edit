@@ -261,7 +261,6 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: String(e), results }, 500)
   } finally {
     if (offerIds.length) await svc.from('offers').delete().in('id', offerIds)
-    await svc.from('audit_logs').delete().in('record_id', offerIds.length ? offerIds : ['00000000-0000-0000-0000-000000000000'])
     for (const id of created) {
       await svc.from('user_roles').delete().eq('user_id', id)
       await svc.auth.admin.deleteUser(id)
