@@ -36,17 +36,20 @@ Deno.serve(async (req) => {
   }
   const auth = (t?: string) => (t ? { Authorization: `Bearer ${t}` } : {})
 
+  let step = 'start'
   try {
     /* ---- provision users ---- */
     for (const [key, role] of [['ceo', 'CEO'], ['hr', 'HR'], ['sales', 'SALES'], ['customer', null]] as const) {
       const email = `stage5-${key}@miabella.test`
       const password = 'Stage5Fixture!aA1'
+      step = `listUsers:${key}`
       const { data: existingList } = await svc.auth.admin.listUsers({ page: 1, perPage: 200 })
       const existingUser = existingList?.users?.find((u: any) => u.email === email)
       let userId: string
       if (existingUser) {
         userId = existingUser.id
       } else {
+        step = `createUser:${key}`
         const r = await svc.auth.admin.createUser({ email, password, email_confirm: true })
         if (r.error || !r.data.user) throw new Error(`user create failed: ${JSON.stringify(r.error)}`)
         userId = r.data.user.id
@@ -54,6 +57,7 @@ Deno.serve(async (req) => {
       const data = { user: { id: userId } }
       await svc.from('profiles').upsert({ id: data.user.id, email, status: 'ACTIVE', is_staff: Boolean(role), full_name: `Stage5 ${key}` })
       if (role) { const { data: has } = await svc.from('user_roles').select('id').eq('user_id', data.user.id).maybeSingle(); if (!has) await svc.from('user_roles').insert({ user_id: data.user.id, role }) }
+      step = `signIn:${key}`
       const anon = createClient(URL_, ANON)
       let session: any = null, sErr: any = null
       for (let attempt = 0; attempt < 4; attempt++) {
@@ -272,7 +276,7 @@ Deno.serve(async (req) => {
       results: results.map((r) => `${r.pass ? 'PASS' : 'FAIL'} — ${r.name}`),
     })
   } catch (e) {
-    return jsonResponse({ error: String(e), results }, 500)
+    return jsonResponse({ error: String(e), step, results }, 500)
   } finally {
     if (offerIds.length) await svc.from('offers').delete().in('id', offerIds)
     void created
