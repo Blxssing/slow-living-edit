@@ -16,6 +16,9 @@ import Checkout from "./pages/Checkout";
 import ResetPassword from "./pages/ResetPassword";
 import StaffLogin from "./pages/staff/StaffLogin";
 import StaffDashboard from "./pages/staff/StaffDashboard";
+import StaffOrders from "./pages/staff/StaffOrders";
+import StaffOrderDetail from "./pages/staff/StaffOrderDetail";
+import StaffCategories from "./pages/staff/StaffCategories";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
