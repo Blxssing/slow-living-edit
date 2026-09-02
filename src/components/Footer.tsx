@@ -1,187 +1,102 @@
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
-import { collections } from "@/data/products";
+import { Instagram, Mail, Phone, Send } from "lucide-react";
+import { useCategories } from "@/hooks/useCatalog";
 
 export const Footer = () => {
+  const { data: categories } = useCategories();
+
   return (
-    <footer className="bg-foreground text-background">
-      {/* Top bar */}
-      <div className="border-b border-background/10">
-        <div className="container-full py-12 md:py-16">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-            <div>
-              <Link
-                to="/"
-                className="font-serif text-3xl md:text-4xl tracking-tight text-background"
-              >
-                Maison
-              </Link>
-              <p className="mt-3 text-sm text-background/50 leading-relaxed max-w-xs">
-                Curated home objects and lifestyle pieces for considered living.
-              </p>
-            </div>
-
-            {/* Newsletter in footer */}
-            <div className="max-w-sm w-full">
-              <p className="text-[10px] font-semibold tracking-[0.3em] uppercase text-background/40 mb-3">
-                Stay Connected
-              </p>
-              <form className="flex gap-0">
-                <input
-                  type="email"
-                  placeholder="Your email"
-                  className="flex-1 h-12 px-4 text-sm bg-background/5 border border-background/15 text-background placeholder:text-background/30 focus:outline-none focus:border-background/40 transition-colors"
-                />
-                <button
-                  type="submit"
-                  className="h-12 px-5 text-sm font-medium bg-background text-foreground hover:bg-background/90 transition-colors"
-                >
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main footer content */}
-      <div className="container-full py-12 md:py-16">
-        <div className="grid gap-10 md:grid-cols-4">
-          {/* Collections */}
-          <div>
-            <h4 className="text-[11px] font-semibold tracking-[0.25em] uppercase text-background/40 mb-5">
-              Collections
-            </h4>
-            <ul className="space-y-3">
-              {collections.slice(0, 6).map((collection) => (
-                <li key={collection.id}>
-                  <Link
-                    to={`/products?collection=${collection.slug}`}
-                    className="text-sm text-background/60 hover:text-background transition-colors duration-300"
-                  >
-                    {collection.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Explore */}
-          <div>
-            <h4 className="text-[11px] font-semibold tracking-[0.25em] uppercase text-background/40 mb-5">
-              Explore
-            </h4>
-            <ul className="space-y-3">
-              <li>
-                <Link
-                  to="/products"
-                  className="text-sm text-background/60 hover:text-background transition-colors duration-300"
-                >
-                  Shop All
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/about"
-                  className="text-sm text-background/60 hover:text-background transition-colors duration-300"
-                >
-                  Our Story
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/cart"
-                  className="text-sm text-background/60 hover:text-background transition-colors duration-300"
-                >
-                  Shopping Bag
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Support */}
-          <div>
-            <h4 className="text-[11px] font-semibold tracking-[0.25em] uppercase text-background/40 mb-5">
-              Support
-            </h4>
-            <ul className="space-y-3">
-              <li>
-                <a
-                  href="#"
-                  className="text-sm text-background/60 hover:text-background transition-colors duration-300"
-                >
-                  Shipping & Returns
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="text-sm text-background/60 hover:text-background transition-colors duration-300"
-                >
-                  Care Guide
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="text-sm text-background/60 hover:text-background transition-colors duration-300"
-                >
-                  FAQ
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Contact */}
-          <div>
-            <h4 className="text-[11px] font-semibold tracking-[0.25em] uppercase text-background/40 mb-5">
-              Contact
-            </h4>
-            <ul className="space-y-3">
-              <li>
-                <a
-                  href="mailto:hello@maison.com"
-                  className="text-sm text-background/60 hover:text-background transition-colors duration-300"
-                >
-                  hello@maison.com
-                </a>
-              </li>
-              <li>
-                <p className="text-sm text-background/40 leading-relaxed">
-                  Mon–Fri, 9am–6pm CET
-                </p>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom bar */}
-      <div className="border-t border-background/10">
-        <div className="container-full py-6 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-background/30">
-            © {new Date().getFullYear()} Maison. All rights reserved.
+    <footer className="mt-24 bg-foreground text-background">
+      <div className="container-wide grid gap-12 py-16 md:grid-cols-4 md:py-20">
+        <div className="md:col-span-2">
+          <Link to="/" className="font-serif text-3xl tracking-tight">
+            Mia<span className="text-primary">Bella</span>
+          </Link>
+          <p className="mt-4 max-w-sm text-sm leading-relaxed text-background/60">
+            Beauty essentials curated in Nairobi. Clean formulas, honest pricing and
+            delivery countrywide.
           </p>
-          <div className="flex gap-8">
-            <a
-              href="#"
-              className="text-xs text-background/30 hover:text-background/60 transition-colors duration-300"
+
+          <form
+            className="mt-8 flex max-w-sm items-center gap-2 rounded-full border border-background/20 p-1.5"
+            onSubmit={(e) => e.preventDefault()}
+          >
+            <label htmlFor="newsletter" className="sr-only">
+              Email address
+            </label>
+            <input
+              id="newsletter"
+              type="email"
+              placeholder="Join the list"
+              className="flex-1 bg-transparent px-4 text-sm outline-none placeholder:text-background/40"
+            />
+            <button
+              type="submit"
+              aria-label="Subscribe"
+              className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground"
             >
-              Privacy Policy
-            </a>
-            <a
-              href="#"
-              className="text-xs text-background/30 hover:text-background/60 transition-colors duration-300"
-            >
-              Terms of Service
-            </a>
-            <a
-              href="#"
-              className="text-xs text-background/30 hover:text-background/60 transition-colors duration-300"
-            >
-              Cookie Policy
-            </a>
-          </div>
+              <Send className="h-4 w-4" />
+            </button>
+          </form>
+        </div>
+
+        <nav aria-label="Shop">
+          <h2 className="text-[0.68rem] font-bold uppercase tracking-[0.2em] text-background/40">
+            Shop
+          </h2>
+          <ul className="mt-5 space-y-3 text-sm text-background/75">
+            <li>
+              <Link to="/products" className="hover:text-background">
+                All products
+              </Link>
+            </li>
+            {(categories ?? []).slice(0, 5).map((cat) => (
+              <li key={cat.id}>
+                <Link to={`/products?category=${cat.slug}`} className="hover:text-background">
+                  {cat.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <nav aria-label="Company">
+          <h2 className="text-[0.68rem] font-bold uppercase tracking-[0.2em] text-background/40">
+            Company
+          </h2>
+          <ul className="mt-5 space-y-3 text-sm text-background/75">
+            <li>
+              <Link to="/about" className="hover:text-background">
+                Our story
+              </Link>
+            </li>
+            <li>
+              <Link to="/wishlist" className="hover:text-background">
+                Wishlist
+              </Link>
+            </li>
+            <li>
+              <Link to="/staff/login" className="hover:text-background">
+                Staff portal
+              </Link>
+            </li>
+            <li className="flex items-center gap-2">
+              <Phone className="h-3.5 w-3.5" /> +254 700 000 000
+            </li>
+            <li className="flex items-center gap-2">
+              <Mail className="h-3.5 w-3.5" /> hello@miabella.co.ke
+            </li>
+            <li className="flex items-center gap-2">
+              <Instagram className="h-3.5 w-3.5" /> @miabella
+            </li>
+          </ul>
+        </nav>
+      </div>
+
+      <div className="border-t border-background/10">
+        <div className="container-wide flex flex-col items-center justify-between gap-2 py-6 text-xs text-background/45 md:flex-row">
+          <p>© {new Date().getFullYear()} Mia Bella Beauty. All rights reserved.</p>
+          <p>Pay securely with M-Pesa</p>
         </div>
       </div>
     </footer>

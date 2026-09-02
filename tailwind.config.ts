@@ -51,14 +51,16 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        terracotta: {
-          DEFAULT: "hsl(var(--terracotta))",
-          light: "hsl(var(--terracotta-light))",
+        cherry: {
+          DEFAULT: "hsl(var(--cherry))",
+          deep: "hsl(var(--cherry-deep))",
         },
-        cream: "hsl(var(--warm-cream))",
-        taupe: "hsl(var(--warm-taupe))",
-        charcoal: "hsl(var(--charcoal))",
-        linen: "hsl(var(--linen))",
+        "hot-pink": "hsl(var(--hot-pink))",
+        bubblegum: "hsl(var(--bubblegum))",
+        blush: "hsl(var(--blush))",
+        burgundy: "hsl(var(--burgundy))",
+        ink: "hsl(var(--ink))",
+        "warm-white": "hsl(var(--warm-white))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -71,6 +73,7 @@ export default {
         },
       },
       borderRadius: {
+        "4xl": "2rem",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
@@ -112,6 +115,18 @@ export default {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-6px)" },
         },
+        "float-slow": {
+          "0%, 100%": { transform: "translateY(0) rotate(0deg)" },
+          "50%": { transform: "translateY(-14px) rotate(3deg)" },
+        },
+        "reveal-up": {
+          "0%": { opacity: "0", transform: "translateY(24px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "shimmer": {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -123,6 +138,9 @@ export default {
         "ken-burns": "ken-burns 20s ease-out forwards",
         "marquee": "marquee 40s linear infinite",
         "float": "float 6s ease-in-out infinite",
+        "float-slow": "float-slow 9s ease-in-out infinite",
+        "reveal-up": "reveal-up 0.7s cubic-bezier(0.16,1,0.3,1) forwards",
+        "shimmer": "shimmer 2.5s linear infinite",
       },
     },
   },
