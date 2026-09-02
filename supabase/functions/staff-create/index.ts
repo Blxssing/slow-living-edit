@@ -40,6 +40,7 @@ Deno.serve(async (req) => {
   }
 
   const isFirstStaff = (existingStaff?.length ?? 0) === 0
+  let actorId: string | null = null
 
   if (isFirstStaff) {
     const expectedSecret = Deno.env.get('STAFF_BOOTSTRAP_SECRET')
@@ -54,6 +55,7 @@ Deno.serve(async (req) => {
     if (!user) {
       return errorResponse('Unauthorized', 401)
     }
+    actorId = user.id
   }
 
   const { data: authUser, error: signUpError } = await supabase.auth.admin.createUser({
