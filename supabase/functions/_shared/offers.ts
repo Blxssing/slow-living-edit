@@ -180,3 +180,83 @@ export function publicOffer(row: {
     product_id: row.product_id,
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Shared storefront pricing resolver — the ONLY way public endpoints
+ * (and later cart/checkout/orders) derive an effective price.
+ * ------------------------------------------------------------------ */
+
+export interface ProductPromotion {
+  base_price: number
+  discount_amount: number
+  effective_price: number
+  offer_id: string | null
+  offer_type: OfferType | null
+  offer_value: number | null
+  discount_percent: number | null
+  promotional_labels: string[]
+  ends_at: string | null
+}
+
+export async function resolveProductPromotions(
+  service: {
+    from: (t: string) => {
+      select: (c: string) => {
+        in: (col: string, v: string[]) => {
+          in: (col: string, v: string[]) => Promise<{ data: unknown[] | null }>
+        }
+      }
+    }
+  },
+  products: { id: string; base_price: number | string }[],
+): Promise<Map<string, ProductPromotion>> {
+  const map = new Map<string, ProductPromotion>()
+  const ids = products.map((p) => p.id)
+  if (ids.length === 0) return map
+
+  const { data } = await service
+    .from('offers')
+    .select('id, product_id, offer_type, value, promotional_label, priority, status, start_at, end_at')
+    .in('product_id', ids)
+    .in('status', ['ACTIVE', 'SCHEDULED'])
+
+  type Row = {
+    id: string
+    product_id: string
+    offer_type: OfferType
+    value: number
+    promotional_label: string | null
+    priority: number
+    status: string
+    start_at: string
+    end_at: string | null
+  }
+  const live = ((data ?? []) as Row[]).filter((r) => isLive(r))
+
+  for (const p of products) {
+    const group = live.filter((r) => r.product_id === p.id)
+    const discount = group
+      .filter((r) => r.offer_type !== 'LABEL_ONLY')
+      .sort((a, b) => b.priority - a.priority)[0] ?? null
+    const pricing = calculatePrice(
+      p.base_price,
+      discount ? { offer_type: discount.offer_type, value: discount.value } : null,
+    )
+    map.set(p.id, {
+      base_price: pricing.base_price,
+      discount_amount: pricing.discount_amount,
+      effective_price: pricing.final_price,
+      offer_id: discount?.id ?? null,
+      offer_type: discount?.offer_type ?? null,
+      offer_value: discount ? Number(discount.value) : null,
+      discount_percent:
+        discount?.offer_type === 'PERCENTAGE' ? Number(discount.value) : null,
+      promotional_labels: group
+        .filter((r) => r.promotional_label)
+        .sort((a, b) => b.priority - a.priority)
+        .map((r) => r.promotional_label as string),
+      ends_at: discount?.end_at ?? null,
+    })
+  }
+  return map
+}
