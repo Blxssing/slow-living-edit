@@ -56,6 +56,7 @@ export type Database = {
       categories: {
         Row: {
           created_at: string
+          created_by: string | null
           description: string | null
           id: string
           image_url: string | null
@@ -63,10 +64,13 @@ export type Database = {
           name: string
           slug: string
           sort_order: number
+          status: string
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
@@ -74,10 +78,13 @@ export type Database = {
           name: string
           slug: string
           sort_order?: number
+          status?: string
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
@@ -85,7 +92,9 @@ export type Database = {
           name?: string
           slug?: string
           sort_order?: number
+          status?: string
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -123,6 +132,78 @@ export type Database = {
             columns: ["variant_id"]
             isOneToOne: true
             referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offers: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          created_by: string | null
+          end_at: string | null
+          id: string
+          name: string
+          offer_type: string
+          priority: number
+          product_id: string | null
+          promotional_label: string | null
+          scope: string
+          start_at: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          value: number
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          end_at?: string | null
+          id?: string
+          name: string
+          offer_type: string
+          priority?: number
+          product_id?: string | null
+          promotional_label?: string | null
+          scope: string
+          start_at?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: number
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          end_at?: string | null
+          id?: string
+          name?: string
+          offer_type?: string
+          priority?: number
+          product_id?: string | null
+          promotional_label?: string | null
+          scope?: string
+          start_at?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offers_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -420,6 +501,7 @@ export type Database = {
         Row: {
           alt_text: string | null
           created_at: string
+          created_by: string | null
           id: string
           is_primary: boolean
           product_id: string
@@ -430,6 +512,7 @@ export type Database = {
         Insert: {
           alt_text?: string | null
           created_at?: string
+          created_by?: string | null
           id?: string
           is_primary?: boolean
           product_id: string
@@ -440,6 +523,7 @@ export type Database = {
         Update: {
           alt_text?: string | null
           created_at?: string
+          created_by?: string | null
           id?: string
           is_primary?: boolean
           product_id?: string
@@ -520,50 +604,65 @@ export type Database = {
       products: {
         Row: {
           base_price: number
+          brand: string | null
           category_id: string | null
           compare_at_price: number | null
           created_at: string
+          created_by: string | null
+          currency: string
           description: string | null
           id: string
           is_featured: boolean
           meta_description: string | null
           meta_title: string | null
           name: string
+          sku: string | null
           slug: string
           status: string
           updated_at: string
+          updated_by: string | null
           weight_g: number | null
         }
         Insert: {
           base_price: number
+          brand?: string | null
           category_id?: string | null
           compare_at_price?: number | null
           created_at?: string
+          created_by?: string | null
+          currency?: string
           description?: string | null
           id?: string
           is_featured?: boolean
           meta_description?: string | null
           meta_title?: string | null
           name: string
+          sku?: string | null
           slug: string
           status?: string
           updated_at?: string
+          updated_by?: string | null
           weight_g?: number | null
         }
         Update: {
           base_price?: number
+          brand?: string | null
           category_id?: string | null
           compare_at_price?: number | null
           created_at?: string
+          created_by?: string | null
+          currency?: string
           description?: string | null
           id?: string
           is_featured?: boolean
           meta_description?: string | null
           meta_title?: string | null
           name?: string
+          sku?: string | null
           slug?: string
           status?: string
           updated_at?: string
+          updated_by?: string | null
           weight_g?: number | null
         }
         Relationships: [
