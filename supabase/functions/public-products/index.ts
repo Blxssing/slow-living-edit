@@ -3,6 +3,7 @@ import { z } from 'npm:zod@3'
 import { getServiceRoleClient } from '../_shared/supabase.ts'
 import { jsonResponse, errorResponse } from '../_shared/response.ts'
 import { publicImageUrls } from '../_shared/catalog.ts'
+import { resolveProductPromotions } from '../_shared/offers.ts'
 
 const QuerySchema = z.object({
   category_slug: z.string().optional(),
@@ -77,6 +78,11 @@ Deno.serve(async (req) => {
     return errorResponse('Failed to fetch products', 500)
   }
 
+  const promotions = await resolveProductPromotions(
+    supabase as any,
+    (data || []).map((p: any) => ({ id: p.id, base_price: p.base_price })),
+  )
+
   const products = await Promise.all((data || []).map(async (product: any) => ({
     id: product.id,
     name: product.name,
@@ -85,6 +91,7 @@ Deno.serve(async (req) => {
     base_price: product.base_price,
     compare_at_price: product.compare_at_price,
     is_featured: product.is_featured,
+    promotion: promotions.get(product.id) ?? null,
     category: product.categories,
     images: await publicImageUrls(supabase as any, product.product_images || []),
     variants: (product.product_variants || []).map((v: any) => ({

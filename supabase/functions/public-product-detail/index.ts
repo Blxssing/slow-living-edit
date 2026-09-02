@@ -3,6 +3,7 @@ import { z } from 'npm:zod@3'
 import { getServiceRoleClient } from '../_shared/supabase.ts'
 import { jsonResponse, errorResponse } from '../_shared/response.ts'
 import { publicImageUrls } from '../_shared/catalog.ts'
+import { resolveProductPromotions } from '../_shared/offers.ts'
 
 const ParamsSchema = z.object({
   slug: z.string().min(1),
@@ -79,6 +80,10 @@ Deno.serve(async (req) => {
       }
     })
 
+  const promotions = await resolveProductPromotions(supabase as any, [
+    { id: product.id, base_price: product.base_price },
+  ])
+
   return jsonResponse({
     id: product.id,
     name: product.name,
@@ -88,6 +93,7 @@ Deno.serve(async (req) => {
     compare_at_price: product.compare_at_price,
     weight_g: product.weight_g,
     is_featured: product.is_featured,
+    promotion: promotions.get(product.id) ?? null,
     category: product.categories,
     images: await publicImageUrls(supabase as any, product.product_images || []),
     variants,
