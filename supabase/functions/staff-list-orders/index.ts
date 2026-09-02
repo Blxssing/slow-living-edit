@@ -2,7 +2,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { z } from 'npm:zod@3'
 import { getServiceRoleClient } from '../_shared/supabase.ts'
 import { jsonResponse, errorResponse } from '../_shared/response.ts'
-import { requireAnyStaffRole } from '../_shared/auth.ts'
+import { requirePermission } from '../_shared/auth.ts'
 
 const QuerySchema = z.object({
   status: z.enum(['pending_payment', 'paid', 'payment_failed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']).optional(),
@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
     return errorResponse('Method not allowed', 405)
   }
 
-  const user = await requireAnyStaffRole(req)
+  const user = await requirePermission(req, 'ORDER_VIEW')
   if (!user) {
     return errorResponse('Unauthorized', 401)
   }

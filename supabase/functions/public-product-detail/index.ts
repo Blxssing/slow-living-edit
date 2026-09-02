@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     `
     )
     .eq('slug', parsed.data.slug)
-    .eq('status', 'active')
+    .eq('status', 'ACTIVE')
     .single()
 
   if (error || !product) {

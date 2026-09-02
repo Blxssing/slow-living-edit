@@ -2,7 +2,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { z } from 'npm:zod@3'
 import { getServiceRoleClient } from '../_shared/supabase.ts'
 import { jsonResponse, errorResponse } from '../_shared/response.ts'
-import { requireRole } from '../_shared/auth.ts'
+import { requirePermission } from '../_shared/auth.ts'
 
 const AdjustSchema = z.object({
   variant_id: z.string().uuid(),
@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     return errorResponse('Method not allowed', 405)
   }
 
-  const user = (await requireRole(req, 'CEO')) || (await requireRole(req, 'SALES PEOPLE'))
+  const user = await requirePermission(req, 'INVENTORY_ADJUST')
   if (!user) {
     return errorResponse('Unauthorized', 401)
   }

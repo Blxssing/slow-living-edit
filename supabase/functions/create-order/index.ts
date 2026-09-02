@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     )
     .in('id', variantIds)
     .eq('is_active', true)
-    .eq('products.status', 'active')
+    .eq('products.status', 'ACTIVE')
 
   if (variantError || !variants || variants.length !== items.length) {
     return errorResponse('One or more products are unavailable', 400)
