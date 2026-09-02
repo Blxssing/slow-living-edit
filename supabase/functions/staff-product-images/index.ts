@@ -187,13 +187,14 @@ Deno.serve(async (req) => {
         .maybeSingle()
       if (!img) return errorResponse('Image not found', 404)
 
-      const { data: updated, error } = await supabase
+      const { error, count } = await supabase
         .from('product_images')
-        .update({ is_primary: true })
+        .update({ is_primary: true }, { count: 'exact' })
         .eq('id', img.id)
-        .select('id')
-        .maybeSingle()
-      if (error || !updated) return errorResponse('Failed to set primary image', 403)
+      if (error || !count) {
+        console.error('set primary failed', error?.message, count)
+        return errorResponse('Failed to set primary image', 403)
+      }
       return jsonResponse({ primary_image_id: img.id, product_id: img.product_id })
     }
 
