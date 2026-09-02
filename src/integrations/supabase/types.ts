@@ -65,6 +65,8 @@ export type Database = {
           slug: string
           sort_order: number
           status: string
+          tagline: string | null
+          theme: string
           updated_at: string
           updated_by: string | null
         }
@@ -79,6 +81,8 @@ export type Database = {
           slug: string
           sort_order?: number
           status?: string
+          tagline?: string | null
+          theme?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -93,6 +97,8 @@ export type Database = {
           slug?: string
           sort_order?: number
           status?: string
+          tagline?: string | null
+          theme?: string
           updated_at?: string
           updated_by?: string | null
         }
