@@ -55,7 +55,9 @@ Deno.serve(async (req) => {
     .select(
       `
       id,
+      order_number,
       status,
+      payment_status,
       currency,
       subtotal,
       shipping_cost,
@@ -63,9 +65,12 @@ Deno.serve(async (req) => {
       discount_amount,
       total,
       notes,
+      guest_email,
+      guest_phone,
       created_at,
       updated_at,
-      profiles:customer_id(id, full_name, phone, email:user_id(email))
+      customer:customer_ref(id, full_name, email, phone),
+      items:order_items(id, product_name, variant_label, quantity, unit_price, total_price)
     `,
       { count: 'exact' }
     )
