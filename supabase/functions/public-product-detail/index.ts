@@ -2,6 +2,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { z } from 'npm:zod@3'
 import { getServiceRoleClient } from '../_shared/supabase.ts'
 import { jsonResponse, errorResponse } from '../_shared/response.ts'
+import { publicImageUrls } from '../_shared/catalog.ts'
 
 const ParamsSchema = z.object({
   slug: z.string().min(1),
@@ -16,7 +17,8 @@ Deno.serve(async (req) => {
     return errorResponse('Method not allowed', 405)
   }
 
-  const slug = new URL(req.url).pathname.split('/').pop()
+  const url = new URL(req.url)
+  const slug = url.searchParams.get('slug') ?? url.pathname.split('/').pop()
   const parsed = ParamsSchema.safeParse({ slug })
   if (!parsed.success) {
     return errorResponse('Invalid product slug', 400)
@@ -65,9 +67,15 @@ Deno.serve(async (req) => {
     .filter((v: any) => v.is_active)
     .map((v: any) => {
       const inv = inventoryMap.get(v.id)
+      const available = inv ? inv.quantity - inv.reserved - inv.sold : 0
       return {
-        ...v,
-        available: inv ? inv.quantity - inv.reserved - inv.sold : 0,
+        id: v.id,
+        sku: v.sku,
+        option_1: v.option_1,
+        option_2: v.option_2,
+        option_3: v.option_3,
+        price_adjustment: v.price_adjustment,
+        in_stock: available > 0,
       }
     })
 
@@ -81,11 +89,7 @@ Deno.serve(async (req) => {
     weight_g: product.weight_g,
     is_featured: product.is_featured,
     category: product.categories,
-    images: (product.product_images || []).sort((a: any, b: any) => {
-      if (a.is_primary && !b.is_primary) return -1
-      if (!a.is_primary && b.is_primary) return 1
-      return a.sort_order - b.sort_order
-    }),
+    images: await publicImageUrls(supabase as any, product.product_images || []),
     variants,
   })
 })
