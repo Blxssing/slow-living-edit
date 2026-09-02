@@ -2,7 +2,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { z } from 'npm:zod@3'
 import { getServiceRoleClient } from '../_shared/supabase.ts'
 import { jsonResponse, errorResponse } from '../_shared/response.ts'
-import { requireRole } from '../_shared/auth.ts'
+import { requirePermission } from '../_shared/auth.ts'
 
 const UpdateSchema = z.object({
   order_id: z.string().uuid(),
@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     return errorResponse('Method not allowed', 405)
   }
 
-  const user = (await requireRole(req, 'CEO')) || (await requireRole(req, 'SALES PEOPLE'))
+  const user = await requirePermission(req, 'ORDER_UPDATE_STATUS')
   if (!user) {
     return errorResponse('Unauthorized', 401)
   }
@@ -85,6 +85,8 @@ Deno.serve(async (req) => {
       await supabase.rpc('release_inventory', {
         _variant_id: item.variant_id,
         _qty: item.quantity,
+        _order_id: order_id,
+        _actor_id: user.id,
       })
     }
   }

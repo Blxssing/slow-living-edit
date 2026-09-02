@@ -235,3 +235,55 @@ Each step is one reviewable migration file; a failure stops the sequence without
 ## 9. Deferred by design
 
 Warehouses/multi-location stock, coupon codes, product reviews, returns/RMA, notification queue, multi-provider payment routing, `carts` persistence. Each slots into this schema as a new table plus a nullable FK — no rewrite required.
+
+---
+
+## 10. Research notes applied (Postgres/Supabase best practice)
+
+Sources: Supabase "Custom Claims & RBAC", "Row Level Security", "RLS Performance and Best Practices".
+
+1. **Official RBAC shape adopted:** `user_roles` + `role_permissions` + a security-definer `authorize`-style function. Deviation: permissions are a **table** (`permissions.key`) rather than an `app_permission` enum, because adding a permission must not require an enum `ALTER TYPE` (which cannot run inside some transaction contexts and is irreversible). Extensibility beats the marginal type-safety win.
+2. **No JWT custom-claims hook (yet).** Claims embedded via `custom_access_token_hook` are fast but go **stale** until token refresh — dangerous for revoking a fired staff member's access. Permissions are read live from the database through `has_permission()`, which is `STABLE` and therefore evaluated once per statement, not per row. If reporting load later demands it, a claims hook can be layered on without schema change.
+3. **RLS performance rules enforced on every policy:**
+   - wrap auth functions: `(select auth.uid())` — lets Postgres treat it as an initPlan constant instead of a per-row call;
+   - always declare `TO authenticated` / `TO anon` so the policy is skipped entirely for other roles;
+   - index every column referenced in a `USING` clause (`orders.customer_id`, `order_items.order_id`, `user_roles.user_id`);
+   - keep predicates function-call-shaped (`has_permission(...)`) rather than inline sub-selects, avoiding recursive-policy faults.
+4. **Never reference a table inside its own policy** — all cross-table checks go through security-definer functions (`has_role`, `has_permission`), preventing "infinite recursion detected in policy".
+5. **Grants are not policies:** RLS is enabled *and* GRANTs are scoped per role on every new table; `anon` is granted only where a public-read policy genuinely exists.
+6. **Money:** `numeric(12,2)`, never `float8`/`money`. **Time:** `timestamptz` only.
+7. **Idempotency:** enforced by unique constraints (`payment_events(provider, provider_event_id)`, partial unique on paid payments), not by application-level "check then insert", which races.
+8. **Concurrency:** stock changes use single-statement conditional updates (`UPDATE ... WHERE quantity - reserved - sold >= qty`) — atomic under concurrent checkout without explicit locking.
+
+---
+
+## 11. Implementation status — Stage 2 COMPLETE
+
+All seven migrations executed against the live database, in order, additively — no table was dropped and no row was lost.
+
+| # | Migration | Result |
+|---|-----------|--------|
+| M1 | `SALES` role, profile status/email/last_login, `permissions`, `role_permissions`, `has_permission()` | applied |
+| M2 | Catalog states DRAFT/ACTIVE/ARCHIVED, money → `numeric(12,2)`, unique slugs, `offers` | applied |
+| M3 | `inventory_movements` append-only ledger, non-negative stock constraints, immutability triggers | applied |
+| M4 | `customers`, `customer_addresses`, `MB-YYYY-NNNNNN` order numbers, order/item money constraints | applied |
+| M5 | Payment states + provider refs, one-paid-per-order unique index, `payment_events`, `transactions` | applied |
+| M6 | `content_sections`, `v_daily_sales`, `v_payment_summary`, permission-based RLS switch-over | applied |
+| M7 | Race-safe `reserve/release/commit/adjust_inventory` writing to the ledger | applied |
+
+### Verified post-migration
+- 26 permissions seeded; CEO 26, HR 12, SALES 10.
+- 0 public tables without RLS; 0 orders without an order number; 4 active products still served by `public-products`.
+- Linter: only the two documented `SECURITY DEFINER` notices for `has_role()` and `has_permission()`, which **must** stay executable by `authenticated` because the RLS policies call them. Every other definer function is `service_role`-only.
+
+### Validation sweep (section 34)
+- **Circular dependencies:** none — `customers.profile_id → profiles` and `orders.customer_ref → customers` form a DAG.
+- **Recursive policies:** none — all cross-table checks route through security-definer functions.
+- **Financial integrity:** partial unique index on `payments(order_id) WHERE status='PAID'` makes double-payment impossible; `payment_events(provider, provider_event_id)` makes duplicate callbacks a no-op; `transactions` and `audit_logs` are trigger-enforced append-only.
+- **Inventory races:** every stock change is one conditional `UPDATE ... RETURNING`; concurrent checkouts cannot oversell.
+- **Historical data:** `order_items` keeps name/SKU/unit price/discount snapshots; totals are never recomputed.
+- **Permission leaks:** no blanket `authenticated` policy remains; every staff policy is a `has_permission()` call scoped `TO authenticated`.
+
+### Deliberately deferred
+- `orders.status` keeps its existing lowercase vocabulary (`pending_payment` … `refunded`) to avoid breaking live Edge Function transition logic; `payment_status` is the new uppercase field. Unifying them is a cosmetic follow-up.
+- `shipping_addresses` remains alongside `customer_addresses` until `create-order` is migrated to the customer model.

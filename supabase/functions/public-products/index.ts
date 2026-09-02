@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     `,
       { count: 'exact' }
     )
-    .eq('status', 'active')
+    .eq('status', 'ACTIVE')
     .eq('product_variants.is_active', true)
     .order('is_primary', { foreignTable: 'product_images', ascending: false })
     .order('sort_order', { foreignTable: 'product_images', ascending: true })

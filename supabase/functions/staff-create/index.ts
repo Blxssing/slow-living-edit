@@ -2,14 +2,14 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { z } from 'npm:zod@3'
 import { getServiceRoleClient } from '../_shared/supabase.ts'
 import { jsonResponse, errorResponse } from '../_shared/response.ts'
-import { requireRole } from '../_shared/auth.ts'
+import { requirePermission } from '../_shared/auth.ts'
 
 const CreateStaffSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(128),
   full_name: z.string().min(1).max(255),
   phone: z.string().max(50).optional(),
-  role: z.enum(['CEO', 'HR', 'SALES PEOPLE']),
+  role: z.enum(['CEO', 'HR', 'SALES']),
   bootstrap_secret: z.string().optional(),
 })
 
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       return errorResponse('First staff member must be CEO', 400)
     }
   } else {
-    const user = (await requireRole(req, 'CEO')) || (await requireRole(req, 'HR'))
+    const user = await requirePermission(req, 'STAFF_MANAGE')
     if (!user) {
       return errorResponse('Unauthorized', 401)
     }
@@ -74,7 +74,10 @@ Deno.serve(async (req) => {
   const { error: profileError } = await supabase.from('profiles').insert({
     id: userId,
     full_name,
+    email,
     phone: phone || null,
+    is_staff: true,
+    status: 'ACTIVE',
   })
 
   if (profileError) {

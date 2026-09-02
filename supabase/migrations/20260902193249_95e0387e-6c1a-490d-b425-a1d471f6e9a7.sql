@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.has_permission(uuid, text) FROM anon;

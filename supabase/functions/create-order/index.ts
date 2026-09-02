@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     )
     .in('id', variantIds)
     .eq('is_active', true)
-    .eq('products.status', 'active')
+    .eq('products.status', 'ACTIVE')
 
   if (variantError || !variants || variants.length !== items.length) {
     return errorResponse('One or more products are unavailable', 400)
@@ -102,6 +102,7 @@ Deno.serve(async (req) => {
         {
           _variant_id: item.variant_id,
           _qty: item.quantity,
+          _actor_id: user.id,
         }
       )
 
@@ -117,6 +118,7 @@ Deno.serve(async (req) => {
         await supabase.rpc('release_inventory', {
           _variant_id: variantId,
           _qty: item.quantity,
+          _actor_id: user.id,
         })
       }
     }
@@ -149,6 +151,7 @@ Deno.serve(async (req) => {
       await supabase.rpc('release_inventory', {
         _variant_id: item.variant_id,
         _qty: item.quantity,
+          _actor_id: user.id,
       })
     }
     return errorResponse('Failed to save shipping address', 500)
@@ -177,6 +180,7 @@ Deno.serve(async (req) => {
       await supabase.rpc('release_inventory', {
         _variant_id: item.variant_id,
         _qty: item.quantity,
+          _actor_id: user.id,
       })
     }
     return errorResponse('Failed to create order', 500)
@@ -211,6 +215,7 @@ Deno.serve(async (req) => {
       await supabase.rpc('release_inventory', {
         _variant_id: item.variant_id,
         _qty: item.quantity,
+          _actor_id: user.id,
       })
     }
     return errorResponse('Failed to create order items', 500)

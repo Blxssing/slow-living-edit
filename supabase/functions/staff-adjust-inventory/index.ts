@@ -2,11 +2,14 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { z } from 'npm:zod@3'
 import { getServiceRoleClient } from '../_shared/supabase.ts'
 import { jsonResponse, errorResponse } from '../_shared/response.ts'
-import { requireRole } from '../_shared/auth.ts'
+import { requirePermission } from '../_shared/auth.ts'
 
 const AdjustSchema = z.object({
   variant_id: z.string().uuid(),
   quantity: z.coerce.number().int(),
+  movement_type: z
+    .enum(['STOCK_IN', 'RESTOCK', 'ADJUSTMENT', 'DAMAGE', 'RETURN'])
+    .default('ADJUSTMENT'),
   reason: z.string().min(1).max(500),
 })
 
@@ -19,7 +22,7 @@ Deno.serve(async (req) => {
     return errorResponse('Method not allowed', 405)
   }
 
-  const user = (await requireRole(req, 'CEO')) || (await requireRole(req, 'SALES PEOPLE'))
+  const user = await requirePermission(req, 'INVENTORY_ADJUST')
   if (!user) {
     return errorResponse('Unauthorized', 401)
   }
@@ -29,47 +32,50 @@ Deno.serve(async (req) => {
     return errorResponse('Invalid inventory adjustment data', 400)
   }
 
-  const { variant_id, quantity, reason } = parsed.data
+  const { variant_id, quantity, movement_type, reason } = parsed.data
   const supabase = getServiceRoleClient()
 
-  const { data: existing, error: fetchError } = await supabase
+  // Atomic, ledger-logged adjustment: refuses to drop stock below reserved + sold.
+  const { data: applied, error: rpcError } = await supabase.rpc('adjust_inventory', {
+    _variant_id: variant_id,
+    _delta: quantity,
+    _movement_type: movement_type,
+    _reason: reason,
+    _actor_id: user.id,
+  })
+
+  if (rpcError) {
+    console.error('Inventory adjustment error:', rpcError.message)
+    return errorResponse('Failed to adjust inventory', 500)
+  }
+
+  if (applied !== true) {
+    return errorResponse(
+      'Adjustment rejected: it would take stock below reserved or sold levels',
+      400
+    )
+  }
+
+  const { data: current } = await supabase
     .from('inventory')
     .select('id, quantity, reserved, sold')
     .eq('variant_id', variant_id)
     .single()
 
-  if (fetchError || !existing) {
-    return errorResponse('Inventory record not found', 404)
-  }
-
-  const newQuantity = existing.quantity + quantity
-  if (newQuantity < existing.reserved + existing.sold) {
-    return errorResponse('Adjustment would drop available stock below reserved/sold levels', 400)
-  }
-
-  const { error: updateError } = await supabase
-    .from('inventory')
-    .update({ quantity: newQuantity })
-    .eq('id', existing.id)
-
-  if (updateError) {
-    console.error('Inventory adjustment error:', updateError)
-    return errorResponse('Failed to adjust inventory', 500)
-  }
-
   await supabase.from('audit_logs').insert({
     actor_id: user.id,
     action: 'inventory_adjustment',
     table_name: 'inventory',
-    record_id: existing.id,
-    old_values: { quantity: existing.quantity, reserved: existing.reserved, sold: existing.sold },
-    new_values: { quantity: newQuantity, reason },
+    record_id: current?.id ?? null,
+    old_values: { delta: quantity },
+    new_values: { movement_type, reason, quantity_after: current?.quantity ?? null },
   })
 
   return jsonResponse({
     success: true,
     variant_id,
-    previous_quantity: existing.quantity,
-    new_quantity: newQuantity,
+    movement_type,
+    new_quantity: current?.quantity ?? null,
+    available: current ? current.quantity - current.reserved - current.sold : null,
   })
 })

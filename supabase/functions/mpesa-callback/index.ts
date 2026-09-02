@@ -120,6 +120,7 @@ Deno.serve(async (req) => {
       await supabase.rpc('commit_inventory', {
         _variant_id: item.variant_id,
         _qty: item.quantity,
+        _order_id: payment.order_id,
       })
     }
   } else {
@@ -147,6 +148,7 @@ Deno.serve(async (req) => {
       await supabase.rpc('release_inventory', {
         _variant_id: item.variant_id,
         _qty: item.quantity,
+        _order_id: payment.order_id,
       })
     }
   }

@@ -2,7 +2,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { z } from 'npm:zod@3'
 import { getServiceRoleClient } from '../_shared/supabase.ts'
 import { jsonResponse, errorResponse } from '../_shared/response.ts'
-import { requireRole } from '../_shared/auth.ts'
+import { requirePermission } from '../_shared/auth.ts'
 
 const CreateSchema = z.object({
   category_id: z.string().uuid(),
@@ -11,7 +11,7 @@ const CreateSchema = z.object({
   description: z.string().optional(),
   base_price: z.coerce.number().positive(),
   compare_at_price: z.coerce.number().positive().optional(),
-  status: z.enum(['active', 'archived', 'discontinued']).default('active'),
+  status: z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']).default('ACTIVE'),
   is_featured: z.boolean().default(false),
   weight_g: z.coerce.number().int().nonnegative().optional(),
   meta_title: z.string().max(255).optional(),
@@ -27,7 +27,10 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
-  const user = await requireRole(req, 'CEO')
+  const user =
+    req.method === 'POST'
+      ? await requirePermission(req, 'PRODUCT_CREATE')
+      : await requirePermission(req, 'PRODUCT_UPDATE')
   if (!user) {
     return errorResponse('Unauthorized', 401)
   }
