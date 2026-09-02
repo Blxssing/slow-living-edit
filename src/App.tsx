@@ -49,6 +49,30 @@ const App = () => (
                 </RequireStaff>
               }
             />
+            <Route
+              path="/staff/orders"
+              element={
+                <RequireStaff>
+                  <StaffOrders />
+                </RequireStaff>
+              }
+            />
+            <Route
+              path="/staff/orders/:id"
+              element={
+                <RequireStaff>
+                  <StaffOrderDetail />
+                </RequireStaff>
+              }
+            />
+            <Route
+              path="/staff/categories"
+              element={
+                <RequireStaff>
+                  <StaffCategories />
+                </RequireStaff>
+              }
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
