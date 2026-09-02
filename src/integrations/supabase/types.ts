@@ -1234,8 +1234,23 @@ export type Database = {
       }
     }
     Functions: {
+      adjust_inventory: {
+        Args: {
+          _actor_id?: string
+          _delta: number
+          _movement_type: string
+          _reason: string
+          _variant_id: string
+        }
+        Returns: boolean
+      }
       commit_inventory: {
-        Args: { _qty: number; _variant_id: string }
+        Args: {
+          _actor_id?: string
+          _order_id?: string
+          _qty: number
+          _variant_id: string
+        }
         Returns: boolean
       }
       get_available_inventory: {
@@ -1254,11 +1269,21 @@ export type Database = {
         Returns: boolean
       }
       release_inventory: {
-        Args: { _qty: number; _variant_id: string }
+        Args: {
+          _actor_id?: string
+          _order_id?: string
+          _qty: number
+          _variant_id: string
+        }
         Returns: boolean
       }
       reserve_inventory: {
-        Args: { _qty: number; _variant_id: string }
+        Args: {
+          _actor_id?: string
+          _order_id?: string
+          _qty: number
+          _variant_id: string
+        }
         Returns: boolean
       }
     }
