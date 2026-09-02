@@ -112,7 +112,7 @@ const ProductDetail = () => {
           <>
             <span className="px-2">/</span>
             <Link
-              to={`/products?category=${product.category.slug}`}
+              to={`/collection/${product.category.slug}`}
               className="hover:text-foreground"
             >
               {product.category.name}
