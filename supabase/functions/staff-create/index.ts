@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
   }
 
   await supabase.from('audit_logs').insert({
-    actor_id: isFirstStaff ? userId : (await requireRole(req, 'CEO') || await requireRole(req, 'HR'))?.id,
+    actor_id: actorId || userId,
     action: 'staff.create',
     target_id: userId,
     target_type: 'user',
