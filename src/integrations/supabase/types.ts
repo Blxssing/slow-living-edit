@@ -136,6 +136,63 @@ export type Database = {
           },
         ]
       }
+      inventory_movements: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          id: string
+          movement_type: string
+          order_id: string | null
+          quantity_after: number
+          quantity_delta: number
+          reason: string | null
+          reserved_after: number
+          sold_after: number
+          variant_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          movement_type: string
+          order_id?: string | null
+          quantity_after: number
+          quantity_delta: number
+          reason?: string | null
+          reserved_after: number
+          sold_after: number
+          variant_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          movement_type?: string
+          order_id?: string | null
+          quantity_after?: number
+          quantity_delta?: number
+          reason?: string | null
+          reserved_after?: number
+          sold_after?: number
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offers: {
         Row: {
           category_id: string | null
