@@ -98,6 +98,109 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_addresses: {
+        Row: {
+          address_line_1: string
+          address_line_2: string | null
+          city: string
+          country: string
+          county: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          is_default: boolean
+          label: string | null
+          phone: string
+          postal_code: string | null
+          recipient_name: string
+          updated_at: string
+        }
+        Insert: {
+          address_line_1: string
+          address_line_2?: string | null
+          city: string
+          country?: string
+          county?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          is_default?: boolean
+          label?: string | null
+          phone: string
+          postal_code?: string | null
+          recipient_name: string
+          updated_at?: string
+        }
+        Update: {
+          address_line_1?: string
+          address_line_2?: string | null
+          city?: string
+          country?: string
+          county?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          is_default?: boolean
+          label?: string | null
+          phone?: string
+          postal_code?: string | null
+          recipient_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_addresses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          is_guest: boolean
+          phone: string | null
+          profile_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          is_guest?: boolean
+          phone?: string | null
+          profile_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          is_guest?: boolean
+          phone?: string | null
+          profile_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory: {
         Row: {
           id: string
@@ -268,6 +371,7 @@ export type Database = {
       order_items: {
         Row: {
           created_at: string
+          discount_snapshot: number
           id: string
           order_id: string
           product_id: string | null
@@ -281,6 +385,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          discount_snapshot?: number
           id?: string
           order_id: string
           product_id?: string | null
@@ -294,6 +399,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          discount_snapshot?: number
           id?: string
           order_id?: string
           product_id?: string | null
@@ -369,11 +475,16 @@ export type Database = {
           created_at: string
           currency: string
           customer_id: string | null
+          customer_ref: string | null
+          delivery_address_id: string | null
           discount_amount: number
           guest_email: string | null
           guest_phone: string | null
           id: string
           notes: string | null
+          order_number: string
+          payment_status: string
+          placed_at: string
           shipping_address_id: string | null
           shipping_cost: number
           status: string
@@ -386,11 +497,16 @@ export type Database = {
           created_at?: string
           currency?: string
           customer_id?: string | null
+          customer_ref?: string | null
+          delivery_address_id?: string | null
           discount_amount?: number
           guest_email?: string | null
           guest_phone?: string | null
           id?: string
           notes?: string | null
+          order_number: string
+          payment_status?: string
+          placed_at?: string
           shipping_address_id?: string | null
           shipping_cost?: number
           status?: string
@@ -403,11 +519,16 @@ export type Database = {
           created_at?: string
           currency?: string
           customer_id?: string | null
+          customer_ref?: string | null
+          delivery_address_id?: string | null
           discount_amount?: number
           guest_email?: string | null
           guest_phone?: string | null
           id?: string
           notes?: string | null
+          order_number?: string
+          payment_status?: string
+          placed_at?: string
           shipping_address_id?: string | null
           shipping_cost?: number
           status?: string
@@ -417,6 +538,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_customer_ref_fkey"
+            columns: ["customer_ref"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_delivery_address_id_fkey"
+            columns: ["delivery_address_id"]
+            isOneToOne: false
+            referencedRelation: "customer_addresses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_shipping_address_id_fkey"
             columns: ["shipping_address_id"]
