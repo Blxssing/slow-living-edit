@@ -41,14 +41,26 @@ Deno.serve(async (req) => {
     for (const [key, role] of [['ceo', 'CEO'], ['hr', 'HR'], ['sales', 'SALES'], ['customer', null]] as const) {
       const email = `stage5-${key}-${crypto.randomUUID().slice(0, 8)}@miabella.test`
       const password = crypto.randomUUID() + 'Aa1!'
-      const { data, error } = await svc.auth.admin.createUser({ email, password, email_confirm: true })
-      if (error || !data.user) throw new Error(`user create failed: ${error?.message}`)
+      let data: any = null, error: any = null
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const r = await svc.auth.admin.createUser({ email, password, email_confirm: true })
+        data = r.data; error = r.error
+        if (!error && r.data.user) break
+        await new Promise((res) => setTimeout(res, 50_000))
+      }
+      if (error || !data?.user) throw new Error(`user create failed: ${JSON.stringify(error)}`)
       created.push(data.user.id)
       await svc.from('profiles').upsert({ id: data.user.id, email, status: 'ACTIVE', is_staff: Boolean(role), full_name: `Stage5 ${key}` })
       if (role) await svc.from('user_roles').insert({ user_id: data.user.id, role })
       const anon = createClient(URL_, ANON)
-      const { data: session, error: sErr } = await anon.auth.signInWithPassword({ email, password })
-      if (sErr || !session.session) throw new Error(`sign-in failed: ${sErr?.message}`)
+      let session: any = null, sErr: any = null
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const r = await anon.auth.signInWithPassword({ email, password })
+        session = r.data; sErr = r.error
+        if (!sErr && r.data.session) break
+        await new Promise((res) => setTimeout(res, 50_000))
+      }
+      if (sErr || !session?.session) throw new Error(`sign-in failed: ${JSON.stringify(sErr)}`)
       users[key] = { id: data.user.id, token: session.session.access_token }
     }
 
