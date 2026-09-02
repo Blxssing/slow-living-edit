@@ -254,3 +254,36 @@ Sources: Supabase "Custom Claims & RBAC", "Row Level Security", "RLS Performance
 6. **Money:** `numeric(12,2)`, never `float8`/`money`. **Time:** `timestamptz` only.
 7. **Idempotency:** enforced by unique constraints (`payment_events(provider, provider_event_id)`, partial unique on paid payments), not by application-level "check then insert", which races.
 8. **Concurrency:** stock changes use single-statement conditional updates (`UPDATE ... WHERE quantity - reserved - sold >= qty`) — atomic under concurrent checkout without explicit locking.
+
+---
+
+## 11. Implementation status — Stage 2 COMPLETE
+
+All seven migrations executed against the live database, in order, additively — no table was dropped and no row was lost.
+
+| # | Migration | Result |
+|---|-----------|--------|
+| M1 | `SALES` role, profile status/email/last_login, `permissions`, `role_permissions`, `has_permission()` | applied |
+| M2 | Catalog states DRAFT/ACTIVE/ARCHIVED, money → `numeric(12,2)`, unique slugs, `offers` | applied |
+| M3 | `inventory_movements` append-only ledger, non-negative stock constraints, immutability triggers | applied |
+| M4 | `customers`, `customer_addresses`, `MB-YYYY-NNNNNN` order numbers, order/item money constraints | applied |
+| M5 | Payment states + provider refs, one-paid-per-order unique index, `payment_events`, `transactions` | applied |
+| M6 | `content_sections`, `v_daily_sales`, `v_payment_summary`, permission-based RLS switch-over | applied |
+| M7 | Race-safe `reserve/release/commit/adjust_inventory` writing to the ledger | applied |
+
+### Verified post-migration
+- 26 permissions seeded; CEO 26, HR 12, SALES 10.
+- 0 public tables without RLS; 0 orders without an order number; 4 active products still served by `public-products`.
+- Linter: only the two documented `SECURITY DEFINER` notices for `has_role()` and `has_permission()`, which **must** stay executable by `authenticated` because the RLS policies call them. Every other definer function is `service_role`-only.
+
+### Validation sweep (section 34)
+- **Circular dependencies:** none — `customers.profile_id → profiles` and `orders.customer_ref → customers` form a DAG.
+- **Recursive policies:** none — all cross-table checks route through security-definer functions.
+- **Financial integrity:** partial unique index on `payments(order_id) WHERE status='PAID'` makes double-payment impossible; `payment_events(provider, provider_event_id)` makes duplicate callbacks a no-op; `transactions` and `audit_logs` are trigger-enforced append-only.
+- **Inventory races:** every stock change is one conditional `UPDATE ... RETURNING`; concurrent checkouts cannot oversell.
+- **Historical data:** `order_items` keeps name/SKU/unit price/discount snapshots; totals are never recomputed.
+- **Permission leaks:** no blanket `authenticated` policy remains; every staff policy is a `has_permission()` call scoped `TO authenticated`.
+
+### Deliberately deferred
+- `orders.status` keeps its existing lowercase vocabulary (`pending_payment` … `refunded`) to avoid breaking live Edge Function transition logic; `payment_status` is the new uppercase field. Unifying them is a cosmetic follow-up.
+- `shipping_addresses` remains alongside `customer_addresses` until `create-order` is migrated to the customer model.
