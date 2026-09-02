@@ -98,6 +98,60 @@ export type Database = {
         }
         Relationships: []
       }
+      content_sections: {
+        Row: {
+          config: Json
+          content: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          image_url: string | null
+          link_url: string | null
+          page: string
+          section_type: string
+          sort_order: number
+          status: string
+          subtitle: string | null
+          title: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          config?: Json
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_url?: string | null
+          link_url?: string | null
+          page: string
+          section_type: string
+          sort_order?: number
+          status?: string
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          config?: Json
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_url?: string | null
+          link_url?: string | null
+          page?: string
+          section_type?: string
+          sort_order?: number
+          status?: string
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       customer_addresses: {
         Row: {
           address_line_1: string
@@ -1152,7 +1206,32 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_daily_sales: {
+        Row: {
+          average_order_value: number | null
+          currency: string | null
+          discount_amount: number | null
+          gross_amount: number | null
+          net_amount: number | null
+          order_count: number | null
+          sales_date: string | null
+          units_sold: number | null
+        }
+        Relationships: []
+      }
+      v_payment_summary: {
+        Row: {
+          currency: string | null
+          failed_count: number | null
+          paid_amount: number | null
+          paid_count: number | null
+          payment_date: string | null
+          provider: string | null
+          refunded_amount: number | null
+          refunded_count: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       commit_inventory: {
