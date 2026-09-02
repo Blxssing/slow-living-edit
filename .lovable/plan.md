@@ -1,233 +1,183 @@
+# Mia Bella Cosmetics — Backend-First E-Commerce Architecture
 
-
-# Homepage & Store Restructure
-
-This plan transforms the portfolio/inquiry-only website into a fully functional e-commerce store with cart, checkout, and proper product flow.
+Build a production-grade e-commerce backend for Mia Bella Cosmetics on Lovable Cloud (PostgreSQL + Auth + Edge Functions + Storage). The public storefront and internal staff system will be built on top of this backend later.
 
 ---
 
-## Summary of Changes
+## Phase 1: Foundation & Role-Based Access Control
 
-### Current State → New State
-- **Wishlist page** → Removed (keep wishlist functionality in header icon only)
-- **Inquiry-based flow** → Shopping cart + checkout flow
-- **Product detail "Inquire" button** → "Add to Bag" + quantity selector
-- **Homepage structure** → Reorganized to match reference layout
+**Goal:** Secure identity model with three staff roles and a protected customer identity.
 
----
+### Staff Roles
+- `CEO` — highest business authority, full reporting and configuration access
+- `HR` — business transaction/reporting access, staff and payroll-related data
+- `SALES PEOPLE` — operational users, daily sales and order operations
 
-## 1. Homepage Restructure
+### Deliverables
+1. Create `app_role` enum and `user_roles` table with security-definer `has_role()` helper.
+2. Enable email/password auth and Google sign-in for staff and customers.
+3. Create `profiles` table (public, references `auth.users`) for name, phone, role metadata.
+4. Add RLS policies so users read only their own profile; service role and role-based helpers govern staff access.
+5. Seed one initial CEO account via migration/seed script.
 
-Reorganize sections to follow this exact order:
-
-| Section | Description |
-|---------|-------------|
-| Hero Banner | Keep existing lifestyle hero |
-| Featured Collection(s) | 1-2 highlighted collections with editorial imagery |
-| Latest Products | Grid of newest arrivals |
-| Collections | Grid/list of all collection categories |
-| About Us | Brand philosophy snippet with link |
-| Follow Us | Social media / Instagram feed placeholder |
-
-### Remove from Homepage
-- Philosophy statement section (move essence to About Us section)
-- Marquee text banner
-- Full-width lifestyle banner mid-page
-- Newsletter section (move to footer only)
+### Security Rules
+- Roles live in a separate `user_roles` table, never on `profiles`.
+- All sensitive operations validated server-side via `has_role(auth.uid(), 'CEO')` etc.
+- No client-side role checks for protected actions.
 
 ---
 
-## 2. Collection/Products Page Updates
+## Phase 2: Core Product & Inventory Schema
 
-### Add Filters
-- Collection filter (already exists)
-- Price range filter (Low to High, High to Low)
-- Material type filter
-- "New Arrivals" and "Featured" quick filters
+**Goal:** Normalized product catalog with strict inventory tracking.
 
-### Add Sorting
-- Dropdown with options:
-  - Featured (default)
-  - Newest
-  - Price: Low to High
-  - Price: High to Low
-  - Alphabetical A-Z
+### Tables
+- `categories` — product categories
+- `products` — core product info, pricing, status (active/archived/discontinued)
+- `product_variants` — size, shade, weight, SKU, barcode, price override
+- `inventory` — per-variant stock ledger with `quantity`, `reserved`, `sold`
+- `product_images` — image references stored in secure object storage
 
-### Product Grid
-- Keep existing editorial-style grid
-- Ensure all cards show mock data
-- Only the first product links to real detail page (others link to same product for demo purposes)
+### Inventory States
+- `available` = `quantity - reserved - sold`
+- `reserved` = stock held during checkout/payment pending
+- `sold` = stock tied to completed orders
+- Released on payment failure or timeout
 
----
-
-## 3. Product Detail Page Updates
-
-### Current → New Layout
-| Element | Change |
-|---------|--------|
-| Images | Keep existing gallery |
-| Title, Description, Price | Keep |
-| "Inquire About This Piece" | → "Add to Bag" primary CTA |
-| Wishlist button | Keep as secondary action |
-| **New: Quantity Selector** | Add increment/decrement control |
-| Related Products | Keep existing |
-
-### New Elements to Add
-- Quantity selector (1-10, with +/- buttons)
-- "Add to Bag" button replaces inquiry button
-- Toast notification on add to cart
+### Deliverables
+1. Migrations for all product/inventory tables with GRANTs and RLS.
+2. Database functions:
+   - `reserve_inventory(variant_id, qty)` — moves available to reserved
+   - `release_inventory(variant_id, qty)` — moves reserved back to available
+   - `commit_inventory(variant_id, qty)` — moves reserved to sold
+3. Triggers to prevent negative stock and audit inventory changes.
+4. Public read-only product/variant APIs via Edge Function.
 
 ---
 
-## 4. New Cart System
+## Phase 3: Orders & Checkout
 
-### Create Cart Store (Zustand)
-Similar to wishlist but with quantity:
-- `items: { product, quantity }[]`
-- `addItem(product, quantity)`
-- `updateQuantity(productId, quantity)`
-- `removeItem(productId)`
-- `getTotal()`
-- `getItemCount()`
-- Persist to localStorage
+**Goal:** Reliable order lifecycle with historical price preservation.
 
-### Cart Page (`/cart`)
-| Element | Description |
-|---------|-------------|
-| Product List | Image, title, price, quantity selector, remove button |
-| Cart Summary | Subtotal, estimated shipping, total |
-| Checkout CTA | Button linking to checkout page |
-| Continue Shopping | Secondary link back to products |
+### Tables
+- `orders` — customer, status, totals, shipping address, timestamps
+- `order_items` — snapshot of product name, variant details, unit price, quantity
+- `shipping_addresses` — normalized address records
+- `order_status_history` — every status transition with actor and timestamp
 
----
+### Order States
+`pending_payment` → `paid` / `payment_failed` → `processing` → `shipped` → `delivered` / `cancelled`
 
-## 5. Checkout Page (`/checkout`)
-
-### Coming Soon Banner
-- Prominent banner: "Online checkout coming soon"
-- Message: "Please contact us to complete your order"
-- Email/phone contact info
-
-### Order Summary
-- List of cart items (read-only)
-- Quantities and prices
-- Subtotal and total
-
-### Contact Form
-- Name, Email, Phone
-- Shipping address fields
-- Order notes/special requests
-- "Submit Order Request" button
-- Form submits and clears cart with success message
+### Deliverables
+1. Migrations for orders, order_items, addresses, status history.
+2. Edge Function `create-order`:
+   - Validates cart items against current inventory
+   - Reserves inventory
+   - Creates order with price snapshots
+   - Returns order ID and payment request
+3. Edge Function `cancel-order` — releases reserved inventory, logs status change.
+4. RLS: customers see only their own orders; staff see orders based on role.
 
 ---
 
-## 6. Header Updates
+## Phase 4: Payments (M-Pesa Daraja)
 
-### Navigation Changes
-| Current | New |
-|---------|-----|
-| Wishlist icon | Keep (but no dedicated page, opens mini drawer or tooltip) |
-| **New:** Cart icon | Bag icon with item count badge |
+**Goal:** Secure payment initiation and confirmation via M-Pesa Daraja API.
 
-### Cart Icon Behavior
-- Shows item count
-- Links to `/cart` page
+### Tables
+- `payments` — payment method, amount, currency, status, external transaction ID, metadata
+- `payment_attempts` — every initiation/response/callback for audit
 
----
+### Payment Flow
+1. Server initiates STK push via Daraja API.
+2. Customer receives prompt and authorizes on phone.
+3. Daraja sends server-side callback to Edge Function.
+4. Callback updates payment status and order status.
+5. On success, inventory reserved → sold. On failure/timeout, reserved → available.
 
-## 7. Mock Data Strategy
-
-### Product Cards Approach
-- All product cards render with unique mock data (images, names, prices)
-- For demo simplicity, clicking any product goes to a single working detail page
-- This prevents broken pages while showcasing the grid design
-
-### Implementation
-- Keep existing product data
-- First product (Arc Pendant Light) is the "real" linkable product
-- Other cards can link to this same product for the demo
+### Deliverables
+1. Migrations for payments and payment attempts.
+2. Edge Function `mpesa-initiate` — validates order, calls Daraja, records attempt.
+3. Edge Function `mpesa-callback` — verifies callback, updates payment/order, commits inventory.
+4. Edge Function `mpesa-query` — reconciliation query for pending payments.
+5. Secrets: `MPESA_CONSUMER_KEY`, `MPESA_CONSUMER_SECRET`, `MPESA_PASSKEY`, `MPESA_SHORTCODE`.
+6. Idempotency keys and signature validation on callbacks.
 
 ---
 
-## 8. Files to Create
+## Phase 5: Staff Management System
 
-| File | Purpose |
-|------|---------|
-| `src/hooks/useCart.ts` | Cart state management with Zustand |
-| `src/pages/Cart.tsx` | Shopping cart page |
-| `src/pages/Checkout.tsx` | Checkout page with form |
-| `src/components/QuantitySelector.tsx` | Reusable +/- quantity control |
-| `src/components/CartIcon.tsx` | Header cart icon with badge |
+**Goal:** Internal dashboard for authorized staff with role-based access.
 
----
+### Permissions Matrix
+| Feature | CEO | HR | SALES |
+|---------|-----|-----|-------|
+| View all orders | yes | yes | yes (own + assigned) |
+| Update order status | yes | no | yes (operational) |
+| Manage products | yes | no | no |
+| Manage inventory | yes | no | yes |
+| View financial reports | yes | yes | no |
+| Manage staff roles | yes | no | no |
+| View customers | yes | yes | yes |
 
-## 9. Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/pages/Index.tsx` | Restructure sections per new layout |
-| `src/pages/Products.tsx` | Add filters and sorting UI |
-| `src/pages/ProductDetail.tsx` | Add quantity selector, change CTA to "Add to Bag" |
-| `src/components/Header.tsx` | Add cart icon, update wishlist behavior |
-| `src/components/Footer.tsx` | Remove wishlist link, keep rest |
-| `src/App.tsx` | Add `/cart` and `/checkout` routes, remove `/wishlist` |
-| `src/components/Layout.tsx` | Fix TypeScript error with Framer Motion variants |
-
----
-
-## 10. Files to Delete
-
-| File | Reason |
-|------|--------|
-| `src/pages/Wishlist.tsx` | User requested removal |
+### Deliverables
+1. Edge Functions for staff operations:
+   - `staff-list-orders`
+   - `staff-update-order-status`
+   - `staff-manage-product`
+   - `staff-adjust-inventory`
+   - `staff-sales-report`
+2. Audit logging table `audit_logs` capturing actor, action, table, record ID, old/new values.
+3. Database functions for aggregated reports (daily sales, inventory valuation).
 
 ---
 
-## Technical Details
+## Phase 6: Public Storefront APIs
 
-### Fix Build Error (Layout.tsx)
-The Framer Motion `ease` array needs to be typed as a tuple:
-```typescript
-ease: [0.25, 0.46, 0.45, 0.94] as const
-```
+**Goal:** Customer-facing read APIs and cart/checkout flow.
 
-### Cart Store Structure
-```typescript
-interface CartItem {
-  product: Product;
-  quantity: number;
-}
-
-interface CartState {
-  items: CartItem[];
-  addItem: (product: Product, quantity: number) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
-  removeItem: (productId: string) => void;
-  clearCart: () => void;
-  getSubtotal: () => number;
-  getItemCount: () => number;
-}
-```
-
-### Quantity Selector Component
-- Shows current quantity (default: 1)
-- Minus button (disabled at 1)
-- Plus button (max 10)
-- Clean, minimal styling matching brand
-
-### Sorting Implementation
-- URL parameter based (`?sort=price-asc`)
-- Combined with existing collection filter
-- `useMemo` for filtered and sorted products
+### Deliverables
+1. Edge Function `public-products` — list/filter/paginate active products.
+2. Edge Function `public-product-detail` — single product with variants.
+3. Edge Function `customer-create-order` — authenticated customers only.
+4. Edge Function `customer-order-history` — own orders only.
+5. Guest checkout support via temporary session/cart (optional v2).
 
 ---
 
-## Visual Design Notes
+## Phase 7: Storage, Validation & Security Hardening
 
-- Maintain warm, Scandinavian aesthetic throughout
-- Cart and checkout pages use same cream/neutral tones
-- No dark theming - keep light, warm palette
-- Generous whitespace on cart/checkout pages
-- Form inputs match existing inquiry form styling
+**Goal:** Secure file uploads and robust input validation.
 
+### Deliverables
+1. Storage bucket `product-images` with size/type limits and public read policy.
+2. Zod validation on every Edge Function input.
+3. Rate limiting on payment and auth endpoints.
+4. Standardized error responses (no stack traces, no internal details).
+5. Indexes on frequently queried columns: order status, product status, inventory variant, payment external ID.
+
+---
+
+## Phase 8: Frontend (After Backend is Solid)
+
+**Goal:** Build the React/Vite customer storefront and staff dashboard on top of the verified backend.
+
+### Deliverables
+1. Public pages: home, product listing, product detail, cart, checkout, order confirmation.
+2. Staff pages: login, dashboard, orders, products, inventory, reports (role-gated).
+3. Use Lovable Cloud auth SDK for sign-in/sign-up.
+4. No client-side role enforcement for protected actions — all mutations go through Edge Functions.
+
+---
+
+## Immediate First Step
+
+Create the database schema for Phase 1 and Phase 2:
+- `app_role` enum
+- `user_roles` table
+- `profiles` table
+- `categories`, `products`, `product_variants`, `inventory`, `product_images`
+- GRANTs and RLS policies for every public table
+- Security-definer helper functions
+
+This gives us the identity and product foundation before adding orders, payments, and staff workflows.
