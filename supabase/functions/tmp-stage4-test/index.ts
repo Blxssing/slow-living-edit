@@ -19,14 +19,21 @@ Deno.serve(async (req) => {
 
   if (body.mode === 'create') {
     const out: Record<string, string> = {}
+    const { data: existing } = await s.auth.admin.listUsers({ perPage: 1000 })
+    const byEmail = new Map(existing.users.map((u) => [u.email ?? '', u.id]))
     for (const u of USERS) {
-      const { data, error } = await s.auth.admin.createUser({
-        email: u.email,
-        password: PASSWORD,
-        email_confirm: true,
-      })
-      if (error || !data.user) return errorResponse(`create failed: ${error?.message}`, 500)
-      const id = data.user.id
+      let id = byEmail.get(u.email)
+      if (id) {
+        await s.auth.admin.updateUserById(id, { password: PASSWORD, email_confirm: true })
+      } else {
+        const { data, error } = await s.auth.admin.createUser({
+          email: u.email,
+          password: PASSWORD,
+          email_confirm: true,
+        })
+        if (error || !data.user) return errorResponse(`create failed: ${error?.message}`, 500)
+        id = data.user.id
+      }
       out[u.role ?? 'CUSTOMER'] = id
       await s.from('profiles').upsert({
         id,
@@ -35,6 +42,7 @@ Deno.serve(async (req) => {
         is_staff: Boolean(u.role),
         status: 'ACTIVE',
       })
+      await s.from('user_roles').delete().eq('user_id', id)
       if (u.role) await s.from('user_roles').insert({ user_id: id, role: u.role })
     }
     return jsonResponse({ users: out })
