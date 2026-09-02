@@ -85,6 +85,8 @@ Deno.serve(async (req) => {
       await supabase.rpc('release_inventory', {
         _variant_id: item.variant_id,
         _qty: item.quantity,
+        _order_id: order_id,
+        _actor_id: user.id,
       })
     }
   }
