@@ -1268,6 +1268,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_active_account: { Args: { _user_id: string }; Returns: boolean }
+      my_access: {
+        Args: never
+        Returns: {
+          account_status: string
+          permission_key: string
+          role: string
+        }[]
+      }
       release_inventory: {
         Args: {
           _actor_id?: string
