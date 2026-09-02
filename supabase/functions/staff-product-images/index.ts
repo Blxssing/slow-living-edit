@@ -187,6 +187,19 @@ Deno.serve(async (req) => {
         .maybeSingle()
       if (!img) return errorResponse('Image not found', 404)
 
+      // A partial unique index allows a single primary per product, so the
+      // current primary must be demoted before the new one is promoted.
+      const { error: demoteError } = await supabase
+        .from('product_images')
+        .update({ is_primary: false })
+        .eq('product_id', img.product_id)
+        .eq('is_primary', true)
+        .neq('id', img.id)
+      if (demoteError) {
+        console.error('demote primary failed', demoteError.message)
+        return errorResponse('Failed to set primary image', 403)
+      }
+
       const { error, count } = await supabase
         .from('product_images')
         .update({ is_primary: true }, { count: 'exact' })
