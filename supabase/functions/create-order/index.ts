@@ -24,7 +24,7 @@ const CreateOrderSchema = z.object({
   notes: z.string().max(1000).optional(),
 })
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }

@@ -7,7 +7,7 @@ const ParamsSchema = z.object({
   slug: z.string().min(1),
 })
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }

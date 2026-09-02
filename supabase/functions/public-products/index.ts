@@ -12,21 +12,7 @@ const QuerySchema = z.object({
   sort: z.enum(['newest', 'price_asc', 'price_desc', 'name_asc']).default('newest'),
 })
 
-function sortClause(sort: string) {
-  switch (sort) {
-    case 'price_asc':
-      return 'order by p.base_price asc'
-    case 'price_desc':
-      return 'order by p.base_price desc'
-    case 'name_asc':
-      return 'order by p.name asc'
-    case 'newest':
-    default:
-      return 'order by p.created_at desc'
-  }
-}
-
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }

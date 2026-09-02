@@ -10,7 +10,7 @@ const AdjustSchema = z.object({
   reason: z.string().min(1).max(500),
 })
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -19,7 +19,7 @@ serve(async (req) => {
     return errorResponse('Method not allowed', 405)
   }
 
-  const user = await requireRole(req, 'CEO') || await requireRole(req, 'SALES PEOPLE')
+  const user = (await requireRole(req, 'CEO')) || (await requireRole(req, 'SALES PEOPLE'))
   if (!user) {
     return errorResponse('Unauthorized', 401)
   }
