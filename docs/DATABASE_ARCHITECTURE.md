@@ -235,3 +235,22 @@ Each step is one reviewable migration file; a failure stops the sequence without
 ## 9. Deferred by design
 
 Warehouses/multi-location stock, coupon codes, product reviews, returns/RMA, notification queue, multi-provider payment routing, `carts` persistence. Each slots into this schema as a new table plus a nullable FK — no rewrite required.
+
+---
+
+## 10. Research notes applied (Postgres/Supabase best practice)
+
+Sources: Supabase "Custom Claims & RBAC", "Row Level Security", "RLS Performance and Best Practices".
+
+1. **Official RBAC shape adopted:** `user_roles` + `role_permissions` + a security-definer `authorize`-style function. Deviation: permissions are a **table** (`permissions.key`) rather than an `app_permission` enum, because adding a permission must not require an enum `ALTER TYPE` (which cannot run inside some transaction contexts and is irreversible). Extensibility beats the marginal type-safety win.
+2. **No JWT custom-claims hook (yet).** Claims embedded via `custom_access_token_hook` are fast but go **stale** until token refresh — dangerous for revoking a fired staff member's access. Permissions are read live from the database through `has_permission()`, which is `STABLE` and therefore evaluated once per statement, not per row. If reporting load later demands it, a claims hook can be layered on without schema change.
+3. **RLS performance rules enforced on every policy:**
+   - wrap auth functions: `(select auth.uid())` — lets Postgres treat it as an initPlan constant instead of a per-row call;
+   - always declare `TO authenticated` / `TO anon` so the policy is skipped entirely for other roles;
+   - index every column referenced in a `USING` clause (`orders.customer_id`, `order_items.order_id`, `user_roles.user_id`);
+   - keep predicates function-call-shaped (`has_permission(...)`) rather than inline sub-selects, avoiding recursive-policy faults.
+4. **Never reference a table inside its own policy** — all cross-table checks go through security-definer functions (`has_role`, `has_permission`), preventing "infinite recursion detected in policy".
+5. **Grants are not policies:** RLS is enabled *and* GRANTs are scoped per role on every new table; `anon` is granted only where a public-read policy genuinely exists.
+6. **Money:** `numeric(12,2)`, never `float8`/`money`. **Time:** `timestamptz` only.
+7. **Idempotency:** enforced by unique constraints (`payment_events(provider, provider_event_id)`, partial unique on paid payments), not by application-level "check then insert", which races.
+8. **Concurrency:** stock changes use single-statement conditional updates (`UPDATE ... WHERE quantity - reserved - sold >= qty`) — atomic under concurrent checkout without explicit locking.
