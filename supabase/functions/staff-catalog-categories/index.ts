@@ -14,18 +14,23 @@ import {
 } from '../_shared/catalog.ts'
 
 const FIELDS =
-  'id, name, slug, description, image_url, sort_order, is_active, status, created_at, updated_at, created_by, updated_by'
+  'id, name, slug, description, image_url, tagline, theme, sort_order, is_active, status, created_at, updated_at, created_by, updated_by'
 
 const ListSchema = PaginationSchema.extend({
   search: z.string().max(120).optional(),
   status: StatusSchema.optional(),
 })
 
+const ThemeSchema = z.enum(['default', 'gold-pink', 'diamond-cream', 'silver-orange'])
+
 const CreateSchema = z.object({
   action: z.literal('CREATE'),
   name: safeText(120),
   slug: SlugSchema.optional(),
   description: safeText(2000).optional().nullable(),
+  tagline: safeText(160).optional().nullable(),
+  image_url: z.string().url().max(1000).optional().nullable(),
+  theme: ThemeSchema.default('default'),
   sort_order: z.coerce.number().int().min(0).max(9999).default(0),
   status: z.enum(['DRAFT', 'ACTIVE']).default('DRAFT'),
 })
@@ -35,6 +40,9 @@ const UpdateSchema = z.object({
   name: safeText(120).optional(),
   slug: SlugSchema.optional(),
   description: safeText(2000).optional().nullable(),
+  tagline: safeText(160).optional().nullable(),
+  image_url: z.string().url().max(1000).optional().nullable(),
+  theme: ThemeSchema.optional(),
   sort_order: z.coerce.number().int().min(0).max(9999).optional(),
   status: z.enum(['DRAFT', 'ACTIVE']).optional(),
 })
