@@ -2,7 +2,8 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { z } from 'npm:zod@3'
 import { getServiceRoleClient } from '../_shared/supabase.ts'
 import { jsonResponse, errorResponse } from '../_shared/response.ts'
-import { requirePermission } from '../_shared/auth.ts'
+import { requirePermissionOrResponse } from '../_shared/auth.ts'
+import { logSecurityEvent } from '../_shared/audit.ts'
 
 const CreateStaffSchema = z.object({
   email: z.string().email(),
@@ -51,11 +52,11 @@ Deno.serve(async (req) => {
       return errorResponse('First staff member must be CEO', 400)
     }
   } else {
-    const user = await requirePermission(req, 'STAFF_MANAGE')
-    if (!user) {
-      return errorResponse('Unauthorized', 401)
+    const guard = await requirePermissionOrResponse(req, 'STAFF_CREATE')
+    if ('response' in guard) {
+      return guard.response
     }
-    actorId = user.id
+    actorId = guard.ctx.userId
   }
 
   const { data: authUser, error: signUpError } = await supabase.auth.admin.createUser({
@@ -97,12 +98,13 @@ Deno.serve(async (req) => {
     return errorResponse('Failed to assign role', 500)
   }
 
-  await supabase.from('audit_logs').insert({
-    actor_id: actorId || userId,
-    action: 'staff.create',
-    target_id: userId,
-    target_type: 'user',
-    details: { role },
+  await logSecurityEvent({
+    action: 'STAFF_CREATED',
+    actorId: actorId,
+    recordId: userId,
+    tableName: 'profiles',
+    details: { role, bootstrap: isFirstStaff },
+    request: req,
   })
 
   return jsonResponse({
