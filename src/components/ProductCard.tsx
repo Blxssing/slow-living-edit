@@ -1,154 +1,135 @@
 import { Link } from "react-router-dom";
-import { Heart } from "lucide-react";
-import { motion } from "framer-motion";
-import { Product, collections } from "@/data/products";
-import { useWishlist } from "@/hooks/useWishlist";
+import { Heart, ShoppingBag } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useCart } from "@/hooks/useCart";
+import { useWishlist } from "@/hooks/useWishlist";
+import {
+  formatKES,
+  primaryImage,
+  strikePrice,
+  unitPrice,
+  type CatalogProduct,
+} from "@/lib/api/catalog";
 
 interface ProductCardProps {
-  product: Product;
-  index?: number;
-  variant?: "default" | "large";
+  product: CatalogProduct;
+  className?: string;
+  priority?: boolean;
 }
 
-export const ProductCard = ({ product, index = 0, variant = "default" }: ProductCardProps) => {
-  const { addItem, removeItem, isInWishlist } = useWishlist();
-  const inWishlist = isInWishlist(product.id);
-  const collection = collections.find((c) => c.id === product.collection);
-  const hasSecondImage = product.images.length > 1;
+export const ProductCard = ({ product, className, priority }: ProductCardProps) => {
+  const addItem = useCart((s) => s.addItem);
+  const toggleWish = useWishlist((s) => s.toggle);
+  const wished = useWishlist((s) => s.ids.includes(product.id));
 
-  const handleWishlistToggle = (e: React.MouseEvent) => {
+  const image = primaryImage(product);
+  const price = unitPrice(product);
+  const strike = strikePrice(product);
+  const variant = product.variants?.[0];
+  const label = product.promotion?.promotional_labels?.[0];
+
+  const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    if (inWishlist) {
-      removeItem(product.id);
-    } else {
-      addItem(product);
+    if (!variant) {
+      toast.error("This product is currently unavailable");
+      return;
     }
+    addItem({
+      productId: product.id,
+      variantId: variant.id,
+      name: product.name,
+      slug: product.slug,
+      variantLabel: variant.option_1,
+      image: image?.url ?? null,
+      unitPrice: price + (variant.price_adjustment ?? 0),
+    });
+    toast.success(`${product.name} added to your bag`);
   };
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-50px" }}
-      transition={{ duration: 0.7, delay: index * 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="group"
-    >
+    <article className={cn("group relative", className)}>
       <Link to={`/product/${product.slug}`} className="block">
-        {/* Image Container */}
-        <div
-          className={cn(
-            "relative overflow-hidden bg-muted/50 mb-5",
-            variant === "large" ? "aspect-[3/4]" : "aspect-[4/5]"
-          )}
-        >
-          {/* Primary Image */}
-          <img
-            src={product.images[0]}
-            alt={product.name}
-            className={cn(
-              "w-full h-full object-cover transition-all duration-[1s] ease-out",
-              hasSecondImage
-                ? "group-hover:opacity-0 group-hover:scale-105"
-                : "group-hover:scale-105"
-            )}
-          />
-
-          {/* Secondary Image (hover) */}
-          {hasSecondImage && (
+        <div className="image-zoom relative aspect-[4/5] rounded-[1.25rem] bg-muted">
+          {image ? (
             <img
-              src={product.images[1]}
-              alt={`${product.name} - alternate view`}
-              className="absolute inset-0 w-full h-full object-cover opacity-0 scale-105 transition-all duration-[1s] ease-out group-hover:opacity-100 group-hover:scale-100"
+              src={image.url}
+              alt={image.alt_text ?? product.name}
+              loading={priority ? "eager" : "lazy"}
+              decoding="async"
+              className="h-full w-full rounded-[1.25rem] object-cover"
             />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              No image
+            </div>
           )}
 
-          {/* Gradient Overlay on Hover */}
-          <div className="absolute inset-0 bg-gradient-to-t from-charcoal/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-
-          {/* Wishlist button */}
-          <button
-            onClick={handleWishlistToggle}
-            className={cn(
-              "absolute top-5 right-5 p-2.5 rounded-full transition-all duration-500",
-              "bg-background/90 backdrop-blur-md hover:bg-background shadow-sm",
-              "opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0",
-              inWishlist && "opacity-100 translate-y-0"
+          <div className="pointer-events-none absolute left-3 top-3 flex flex-col gap-2">
+            {label && (
+              <span className="rounded-full gradient-cherry px-3 py-1 text-[0.65rem] font-bold uppercase tracking-widest text-primary-foreground">
+                {label}
+              </span>
             )}
+            {!label && strike && (
+              <span className="rounded-full bg-primary px-3 py-1 text-[0.65rem] font-bold uppercase tracking-widest text-primary-foreground">
+                Sale
+              </span>
+            )}
+            {product.is_featured && !label && !strike && (
+              <span className="rounded-full bg-secondary px-3 py-1 text-[0.65rem] font-bold uppercase tracking-widest text-secondary-foreground">
+                Best seller
+              </span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            aria-label={wished ? `Remove ${product.name} from wishlist` : `Save ${product.name} to wishlist`}
+            aria-pressed={wished}
+            onClick={(e) => {
+              e.preventDefault();
+              toggleWish(product.id);
+            }}
+            className="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-background/85 backdrop-blur transition-colors hover:bg-background"
           >
-            <Heart
-              className={cn(
-                "w-4 h-4 transition-all duration-300",
-                inWishlist ? "fill-primary text-primary scale-110" : "text-foreground"
-              )}
-            />
+            <Heart className={cn("h-4 w-4", wished ? "fill-primary text-primary" : "text-foreground")} />
           </button>
 
-          {/* Badges */}
-          <div className="absolute top-5 left-5 flex flex-col gap-2">
-            {product.new && (
-              <motion.span
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 }}
-                className="px-3 py-1.5 text-[10px] font-semibold tracking-[0.2em] uppercase bg-foreground text-background"
-              >
-                New
-              </motion.span>
-            )}
-            {product.featured && (
-              <motion.span
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 }}
-                className="px-3 py-1.5 text-[10px] font-semibold tracking-[0.2em] uppercase bg-primary text-primary-foreground"
-              >
-                Featured
-              </motion.span>
-            )}
-          </div>
-
-          {/* Quick View Indicator */}
-          <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center pb-6 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500 delay-100">
-            <span className="px-6 py-2.5 text-xs font-medium tracking-[0.15em] uppercase bg-background/95 backdrop-blur-md text-foreground shadow-lg">
-              View Details
-            </span>
-          </div>
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="absolute inset-x-3 bottom-3 flex h-11 items-center justify-center gap-2 rounded-full bg-foreground text-sm font-semibold text-background opacity-0 transition-all duration-300 focus-visible:opacity-100 group-hover:opacity-100 md:translate-y-2 md:group-hover:translate-y-0"
+          >
+            <ShoppingBag className="h-4 w-4" />
+            Add to bag
+          </button>
         </div>
 
-        {/* Product Info */}
-        <div className="space-y-2">
-          {/* Collection label */}
-          {collection && (
-            <p className="text-[11px] font-medium tracking-[0.2em] uppercase text-muted-foreground/70 transition-colors duration-300 group-hover:text-primary">
-              {collection.name}
+        <div className="mt-4 space-y-1">
+          {product.category && (
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              {product.category.name}
             </p>
           )}
-
-          <h3 className="font-serif text-xl text-foreground transition-colors duration-300 group-hover:text-primary leading-snug">
-            {product.name}
-          </h3>
-
-          <p className="text-sm text-muted-foreground line-clamp-1 leading-relaxed">
-            {product.description}
-          </p>
-
-          <div className="flex items-center gap-3 pt-1">
-            <p className="text-base font-medium text-foreground tracking-wide">
-              ${product.price.toLocaleString()}
-            </p>
-            {product.materials && (
-              <>
-                <span className="w-px h-3 bg-border" />
-                <p className="text-xs text-muted-foreground/60 tracking-wide">
-                  {product.materials.split(",")[0]}
-                </p>
-              </>
+          <h3 className="font-serif text-lg leading-snug">{product.name}</h3>
+          <p className="flex items-baseline gap-2">
+            <span className="text-base font-semibold text-primary">{formatKES(price)}</span>
+            {strike && (
+              <span className="text-sm text-muted-foreground line-through">{formatKES(strike)}</span>
             )}
-          </div>
+          </p>
         </div>
       </Link>
-    </motion.article>
+
+      <button
+        type="button"
+        onClick={handleAdd}
+        className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-full border border-foreground/15 text-sm font-semibold transition-colors hover:bg-foreground hover:text-background md:hidden"
+      >
+        <ShoppingBag className="h-4 w-4" />
+        Add to bag
+      </button>
+    </article>
   );
 };

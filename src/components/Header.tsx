@@ -1,243 +1,218 @@
-import { Link } from "react-router-dom";
-import { Heart, Menu, X } from "lucide-react";
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useWishlist } from "@/hooks/useWishlist";
-import { CartIcon } from "@/components/CartIcon";
-import { collections } from "@/data/products";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Heart, Menu, Search, ShoppingBag, User, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCart } from "@/hooks/useCart";
+import { useWishlist } from "@/hooks/useWishlist";
+import { useCategories } from "@/hooks/useCatalog";
+import { CartDrawer } from "@/components/CartDrawer";
+
+const staticLinks = [
+  { label: "Shop all", to: "/products" },
+  { label: "New arrivals", to: "/products?sort=newest" },
+  { label: "Best sellers", to: "/products?featured=true" },
+];
 
 export const Header = () => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { items } = useWishlist();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [term, setTerm] = useState("");
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const itemCount = useCart((s) => s.getItemCount());
+  const openCart = useCart((s) => s.openCart);
+  const wishCount = useWishlist((s) => s.ids.length);
+  const { data: categories } = useCategories();
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    const onScroll = () => setScrolled(window.scrollY > 16);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  useEffect(() => {
+    setMenuOpen(false);
+    setSearchOpen(false);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!term.trim()) return;
+    navigate(`/products?search=${encodeURIComponent(term.trim())}`);
+    setTerm("");
+  };
+
+  const navCategories = (categories ?? []).slice(0, 5);
+
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-50 transition-all duration-500",
-        scrolled
-          ? "bg-background/95 backdrop-blur-md border-b border-border shadow-sm"
-          : "bg-background/80 backdrop-blur-sm border-b border-transparent"
-      )}
-    >
-      <nav className="container-full">
-        <div className="flex items-center justify-between h-16 md:h-20">
-          {/* Logo */}
+    <>
+      <div className="gradient-cherry text-primary-foreground">
+        <div className="container-wide flex h-9 items-center justify-center overflow-hidden">
+          <p className="whitespace-nowrap text-[0.68rem] font-semibold uppercase tracking-[0.18em]">
+            Free delivery on orders over KSh 5,000 · New drop just landed
+          </p>
+        </div>
+      </div>
+
+      <header
+        className={cn(
+          "sticky top-0 z-50 transition-all duration-300",
+          scrolled
+            ? "border-b border-border bg-background/85 backdrop-blur-xl"
+            : "bg-background",
+        )}
+      >
+        <div className="container-wide flex h-16 items-center justify-between gap-4 md:h-20">
+          <button
+            type="button"
+            aria-label="Open menu"
+            onClick={() => setMenuOpen(true)}
+            className="grid h-10 w-10 place-items-center rounded-full hover:bg-muted lg:hidden"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
           <Link
             to="/"
-            className="font-serif text-2xl md:text-3xl tracking-tight text-foreground hover:text-primary transition-colors duration-300"
+            className="font-serif text-xl font-semibold tracking-tight md:text-2xl lg:mr-6"
           >
-            Maison
+            Mia<span className="text-primary">Bella</span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
-            <NavigationMenu>
-              <NavigationMenuList>
-                <NavigationMenuItem>
-                  <NavigationMenuTrigger className="bg-transparent text-xs font-medium tracking-[0.15em] uppercase text-muted-foreground hover:text-foreground">
-                    Collections
-                  </NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    <ul className="grid w-[400px] gap-1 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                      {collections.map((collection) => (
-                        <li key={collection.id}>
-                          <NavigationMenuLink asChild>
-                            <Link
-                              to={`/products?collection=${collection.slug}`}
-                              className={cn(
-                                "block select-none space-y-1 rounded-sm p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                              )}
-                            >
-                              <div className="text-sm font-medium leading-none">
-                                {collection.name}
-                              </div>
-                              <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                                {collection.description}
-                              </p>
-                            </Link>
-                          </NavigationMenuLink>
-                        </li>
-                      ))}
-                    </ul>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-              </NavigationMenuList>
-            </NavigationMenu>
-
-            <Link
-              to="/products"
-              className="text-xs font-medium tracking-[0.15em] uppercase text-muted-foreground hover:text-foreground transition-colors duration-300 link-underline"
-            >
-              Shop All
-            </Link>
-
+          <nav aria-label="Main" className="hidden flex-1 items-center justify-center gap-7 lg:flex">
+            {staticLinks.map((link) => (
+              <Link
+                key={link.label}
+                to={link.to}
+                className="link-underline text-sm font-semibold text-foreground/80 transition-colors hover:text-foreground"
+              >
+                {link.label}
+              </Link>
+            ))}
+            {navCategories.map((cat) => (
+              <Link
+                key={cat.id}
+                to={`/products?category=${cat.slug}`}
+                className="link-underline text-sm font-semibold text-foreground/80 transition-colors hover:text-foreground"
+              >
+                {cat.name}
+              </Link>
+            ))}
             <Link
               to="/about"
-              className="text-xs font-medium tracking-[0.15em] uppercase text-muted-foreground hover:text-foreground transition-colors duration-300 link-underline"
+              className="link-underline text-sm font-semibold text-foreground/80 transition-colors hover:text-foreground"
             >
               About
             </Link>
-          </div>
+          </nav>
 
-          {/* Right side actions */}
-          <div className="flex items-center gap-2">
-            {/* Wishlist Icon with Tooltip */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button className="relative p-2 hover:bg-accent transition-colors duration-300 group">
-                  <Heart className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />
-                  <AnimatePresence>
-                    {items.length > 0 && (
-                      <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        exit={{ scale: 0 }}
-                        className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary text-primary-foreground text-[10px] font-semibold rounded-full flex items-center justify-center"
-                      >
-                        {items.length > 9 ? "9+" : items.length}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-xs">
-                {items.length === 0 ? (
-                  <p className="text-sm">Your wishlist is empty</p>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">{items.length} saved {items.length === 1 ? 'item' : 'items'}</p>
-                    <div className="space-y-1">
-                      {items.slice(0, 3).map((item) => (
-                        <p key={item.id} className="text-xs text-muted-foreground truncate">
-                          {item.name}
-                        </p>
-                      ))}
-                      {items.length > 3 && (
-                        <p className="text-xs text-muted-foreground">+{items.length - 3} more</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </TooltipContent>
-            </Tooltip>
-
-            {/* Cart Icon */}
-            <CartIcon />
-
-            {/* Mobile menu button */}
+          <div className="flex items-center gap-0.5">
             <button
-              className="md:hidden p-2 hover:bg-accent transition-colors duration-300"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              type="button"
+              aria-label="Search products"
+              onClick={() => setSearchOpen((v) => !v)}
+              className="grid h-10 w-10 place-items-center rounded-full hover:bg-muted"
             >
-              <AnimatePresence mode="wait">
-                {mobileMenuOpen ? (
-                  <motion.div
-                    key="close"
-                    initial={{ rotate: -90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: 90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <X className="w-5 h-5" />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="menu"
-                    initial={{ rotate: 90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: -90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Menu className="w-5 h-5" />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <Search className="h-[1.15rem] w-[1.15rem]" />
+            </button>
+            <Link
+              to="/account"
+              aria-label="Account"
+              className="hidden h-10 w-10 place-items-center rounded-full hover:bg-muted md:grid"
+            >
+              <User className="h-[1.15rem] w-[1.15rem]" />
+            </Link>
+            <Link
+              to="/wishlist"
+              aria-label={`Wishlist, ${wishCount} items`}
+              className="relative hidden h-10 w-10 place-items-center rounded-full hover:bg-muted md:grid"
+            >
+              <Heart className="h-[1.15rem] w-[1.15rem]" />
+              {wishCount > 0 && (
+                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary" />
+              )}
+            </Link>
+            <button
+              type="button"
+              onClick={openCart}
+              aria-label={`Shopping bag, ${itemCount} items`}
+              className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-muted"
+            >
+              <ShoppingBag className="h-[1.15rem] w-[1.15rem]" />
+              {itemCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[0.65rem] font-bold text-primary-foreground">
+                  {itemCount}
+                </span>
+              )}
             </button>
           </div>
         </div>
 
-        {/* Mobile Menu */}
-        <AnimatePresence>
-          {mobileMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] as const }}
-              className="md:hidden border-t border-border overflow-hidden"
+        {searchOpen && (
+          <div className="border-t border-border bg-background">
+            <form onSubmit={submitSearch} className="container-wide flex items-center gap-3 py-4">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <input
+                autoFocus
+                value={term}
+                onChange={(e) => setTerm(e.target.value)}
+                placeholder="Search lipsticks, serums, perfume…"
+                aria-label="Search products"
+                className="flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
+              />
+              <button type="button" aria-label="Close search" onClick={() => setSearchOpen(false)}>
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </form>
+          </div>
+        )}
+      </header>
+
+      {menuOpen && (
+        <div className="fixed inset-0 z-[60] flex flex-col bg-background lg:hidden">
+          <div className="flex h-16 items-center justify-between px-5">
+            <span className="font-serif text-xl font-semibold">
+              Mia<span className="text-primary">Bella</span>
+            </span>
+            <button
+              type="button"
+              aria-label="Close menu"
+              onClick={() => setMenuOpen(false)}
+              className="grid h-10 w-10 place-items-center rounded-full hover:bg-muted"
             >
-              <div className="py-8 space-y-6">
-                <div className="space-y-1">
-                  <p className="text-[10px] font-semibold tracking-[0.3em] uppercase text-muted-foreground/50 px-2 mb-3">
-                    Collections
-                  </p>
-                  {collections.slice(0, 6).map((collection, i) => (
-                    <motion.div
-                      key={collection.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.05 }}
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <nav aria-label="Mobile" className="flex-1 overflow-y-auto px-5 py-6">
+            <ul className="space-y-1">
+              {[...staticLinks, ...navCategories.map((c) => ({ label: c.name, to: `/products?category=${c.slug}` })), { label: "About", to: "/about" }, { label: "Wishlist", to: "/wishlist" }, { label: "Account", to: "/account" }].map(
+                (link) => (
+                  <li key={link.label}>
+                    <Link
+                      to={link.to}
+                      className="block border-b border-border py-4 font-serif text-2xl"
                     >
-                      <Link
-                        to={`/products?collection=${collection.slug}`}
-                        className="block px-2 py-2.5 text-sm hover:bg-accent transition-colors duration-300"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        {collection.name}
-                      </Link>
-                    </motion.div>
-                  ))}
-                </div>
-                <div className="pt-6 border-t border-border space-y-1">
-                  {[
-                    { to: "/products", label: "Shop All" },
-                    { to: "/about", label: "About" },
-                    { to: "/cart", label: "Shopping Bag" },
-                  ].map((link, i) => (
-                    <motion.div
-                      key={link.to}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.3 + i * 0.05 }}
-                    >
-                      <Link
-                        to={link.to}
-                        className="block px-2 py-2.5 text-sm font-medium hover:bg-accent transition-colors duration-300"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        {link.label}
-                      </Link>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </nav>
-    </header>
+                      {link.label}
+                    </Link>
+                  </li>
+                ),
+              )}
+            </ul>
+          </nav>
+        </div>
+      )}
+
+      <CartDrawer />
+    </>
   );
 };

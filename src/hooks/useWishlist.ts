@@ -1,35 +1,26 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { Product } from '@/data/products';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface WishlistState {
-  items: Product[];
-  addItem: (product: Product) => void;
-  removeItem: (productId: string) => void;
+  ids: string[];
+  toggle: (productId: string) => void;
   isInWishlist: (productId: string) => boolean;
-  clearWishlist: () => void;
+  clear: () => void;
 }
 
 export const useWishlist = create<WishlistState>()(
   persist(
     (set, get) => ({
-      items: [],
-      addItem: (product) => {
-        const { items } = get();
-        if (!items.find((item) => item.id === product.id)) {
-          set({ items: [...items, product] });
-        }
-      },
-      removeItem: (productId) => {
-        set({ items: get().items.filter((item) => item.id !== productId) });
-      },
-      isInWishlist: (productId) => {
-        return get().items.some((item) => item.id === productId);
-      },
-      clearWishlist: () => set({ items: [] }),
+      ids: [],
+      toggle: (productId) =>
+        set((state) => ({
+          ids: state.ids.includes(productId)
+            ? state.ids.filter((id) => id !== productId)
+            : [...state.ids, productId],
+        })),
+      isInWishlist: (productId) => get().ids.includes(productId),
+      clear: () => set({ ids: [] }),
     }),
-    {
-      name: 'wishlist-storage',
-    }
-  )
+    { name: "mia-bella-wishlist" },
+  ),
 );
