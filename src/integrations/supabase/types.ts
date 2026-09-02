@@ -392,6 +392,30 @@ export type Database = {
           },
         ]
       }
+      permissions: {
+        Row: {
+          created_at: string
+          description: string
+          domain: string
+          id: string
+          key: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          domain: string
+          id?: string
+          key: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          domain?: string
+          id?: string
+          key?: string
+        }
+        Relationships: []
+      }
       product_images: {
         Row: {
           alt_text: string | null
@@ -556,31 +580,69 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          email: string | null
           full_name: string | null
           id: string
           is_staff: boolean
+          last_login_at: string | null
           phone: string | null
+          status: string
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id: string
           is_staff?: boolean
+          last_login_at?: string | null
           phone?: string | null
+          status?: string
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id?: string
           is_staff?: boolean
+          last_login_at?: string | null
           phone?: string | null
+          status?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      role_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          permission_id: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          permission_id: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          permission_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shipping_addresses: {
         Row: {
@@ -672,6 +734,10 @@ export type Database = {
         Args: { _variant_id: string }
         Returns: number
       }
+      has_permission: {
+        Args: { _permission_key: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -689,7 +755,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "CEO" | "HR" | "SALES PEOPLE"
+      app_role: "CEO" | "HR" | "SALES PEOPLE" | "SALES"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -817,7 +883,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["CEO", "HR", "SALES PEOPLE"],
+      app_role: ["CEO", "HR", "SALES PEOPLE", "SALES"],
     },
   },
 } as const
